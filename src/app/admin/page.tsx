@@ -284,11 +284,11 @@ export default async function SuperAdminPage() {
       .reduce((acc, p) => acc + (p.totalAmount || 0), 0);
 
     const memb = allMembers.filter(
-      (m) => m.createdAt >= mStart && m.createdAt <= mEnd
+      (m: { createdAt: Date }) => m.createdAt >= mStart && m.createdAt <= mEnd
     ).length;
 
     const gymCount = gyms.filter(
-      (g) => g.createdAt >= mStart && g.createdAt <= mEnd
+      (g: { createdAt: Date }) => g.createdAt >= mStart && g.createdAt <= mEnd
     ).length;
 
     monthlyTrend.push({ month: label, revenue: rev, members: memb, gyms: gymCount });
@@ -397,9 +397,9 @@ export default async function SuperAdminPage() {
     gymRevenueRanking,
 
     // Health summary
-    healthyGyms: processedGyms.filter((g) => g.healthStatus === "healthy").length,
-    atRiskGyms: processedGyms.filter((g) => g.healthStatus === "at_risk").length,
-    inactiveGyms: processedGyms.filter((g) => g.healthStatus === "inactive").length,
+    healthyGyms: processedGyms.filter((g: (typeof processedGyms)[number]) => g.healthStatus === "healthy").length,
+    atRiskGyms: processedGyms.filter((g: (typeof processedGyms)[number]) => g.healthStatus === "at_risk").length,
+    inactiveGyms: processedGyms.filter((g: (typeof processedGyms)[number]) => g.healthStatus === "inactive").length,
   };
 
   return (
@@ -408,7 +408,7 @@ export default async function SuperAdminPage() {
       gyms={processedGyms}
       recentUsers={recentUsers}
       recentActivity={recentActivity}
-      announcements={announcements.map((a) => ({
+      announcements={announcements.map((a: (typeof announcements)[number]) => ({
         ...a,
         gymName: a.gym?.name || null,
       }))}
