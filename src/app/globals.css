@@ -1,0 +1,285 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #F9F8F6;
+  --color-surface: #FFFFFF;
+  --color-surface-2: #F3EFEA;
+  --color-primary: #8B5E34;
+  --color-secondary: #A07850;
+  --color-accent: #E5D9C5;
+  --color-foreground: #33281E;
+  --color-muted: #8C7A6B;
+  --color-border: #E5D9C5;
+  --color-border-strong: #D4C3A9;
+
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Cascadia Code", "Segoe UI Mono", Consolas, ui-monospace, SFMono-Regular, monospace;
+  --font-display: "Segoe UI Variable Display", "Segoe UI", -apple-system, sans-serif;
+}
+
+:root {
+  color-scheme: light;
+  --bg-main: #F9F8F6;
+  --surface-card: #FFFFFF;
+  --surface-subtle: #F3EFEA;
+  --accent-beige: #E5D9C5;
+  --accent-beige-subtle: rgba(229, 217, 197, 0.4);
+  --accent-caramel: #8B5E34;
+  --accent-caramel-hover: #754E29;
+  --text-espresso: #33281E;
+  --text-taupe: #8C7A6B;
+
+  --shadow-warm-sm: 0 4px 20px rgba(51, 40, 30, 0.05);
+  --shadow-warm-md: 0 10px 30px rgba(51, 40, 30, 0.08), 0 1px 3px rgba(51, 40, 30, 0.03);
+  --shadow-warm-lg: 0 20px 48px -12px rgba(51, 40, 30, 0.12), 0 0 0 1px #E5D9C5;
+}
+
+html {
+  scroll-behavior: smooth;
+  background-color: #F9F8F6;
+  color: #33281E;
+}
+
+body {
+  background-color: #F9F8F6;
+  color: #33281E;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgba(139, 94, 52, 0.2);
+  color: #33281E;
+}
+
+/* ==========================================================================
+   Accessibility: Custom Caramel Brown Focus Ring for Keyboard Users
+   ========================================================================== */
+:focus-visible {
+  outline: 2px solid var(--accent-caramel, #8B5E34) !important;
+  outline-offset: 2px !important;
+}
+
+/* Native Compact Scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 94, 52, 0.25) transparent;
+}
+*::-webkit-scrollbar { width: 5px; height: 5px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: rgba(139, 94, 52, 0.25);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 94, 52, 0.45);
+}
+
+/* ---------- WinUI 3 Desktop Control Primitives (Warm Minimalist) ---------- */
+
+.winui-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E5D9C5;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(51, 40, 30, 0.05);
+  color: #33281E;
+}
+
+.winui-pane {
+  background-color: #F3EFEA;
+  border-right: 1px solid #E5D9C5;
+}
+
+.winui-input {
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid #E5D9C5;
+  border-bottom: 1.5px solid #8B5E34;
+  background-color: #FFFFFF;
+  padding: 0 10px;
+  font-size: 12px;
+  color: #33281E;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+.winui-input:focus {
+  border-color: #8B5E34;
+  border-bottom-width: 2px;
+  box-shadow: 0 0 12px rgba(139, 94, 52, 0.15);
+}
+
+/* ==========================================================================
+   Premium Micro-Interactions: Subtle .3s ease-in-out hover transitions
+   ========================================================================== */
+.btn-primary,
+.btn-ghost,
+button.button-hover-lift,
+a.button-hover-lift {
+  transition: all 0.3s ease-in-out;
+}
+
+.btn-primary:hover,
+.btn-ghost:hover,
+button.button-hover-lift:hover,
+a.button-hover-lift:hover {
+  transform: translateY(-2px);
+}
+
+.btn-primary:active,
+.btn-ghost:active,
+button.button-hover-lift:active,
+a.button-hover-lift:active {
+  transform: translateY(0px) scale(0.98);
+}
+
+.btn-primary {
+  background: #8B5E34;
+  color: #FFFFFF !important;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid #8B5E34;
+  box-shadow: 0 4px 14px rgba(139, 94, 52, 0.2);
+}
+.btn-primary:hover {
+  background: #754E29;
+  border-color: #754E29;
+  box-shadow: 0 6px 20px rgba(139, 94, 52, 0.3);
+}
+.btn-primary:active {
+  background: #5E3E20;
+}
+
+.btn-ghost {
+  border: 1px solid #E5D9C5;
+  background-color: #FFFFFF;
+  color: #33281E;
+  font-weight: 600;
+  border-radius: 8px;
+}
+.btn-ghost:hover {
+  border-color: #8B5E34;
+  background-color: #F3EFEA;
+  color: #33281E;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================================
+   Fluid Typography via CSS clamp() for Editorial Magazine Feel
+   ========================================================================== */
+.text-fluid-hero {
+  font-size: clamp(2.75rem, 5.5vw + 1rem, 5.25rem);
+  line-height: 1.06;
+  letter-spacing: -0.025em;
+}
+
+.text-fluid-headline {
+  font-size: clamp(2rem, 3.2vw + 0.5rem, 3.25rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.text-fluid-subhead {
+  font-size: clamp(1.15rem, 1.5vw + 0.4rem, 1.65rem);
+  line-height: 1.4;
+}
+
+.text-fluid-body {
+  font-size: clamp(0.925rem, 0.4vw + 0.8rem, 1.125rem);
+  line-height: 1.65;
+}
+
+.text-fluid-eyebrow {
+  font-size: clamp(0.68rem, 0.2vw + 0.65rem, 0.8rem);
+  letter-spacing: 0.25em;
+}
+
+/* ==========================================================================
+   Bespoke Borders & Multi-Layered Transparent Brown Shadows
+   ========================================================================== */
+.bespoke-border {
+  border: 1px solid var(--accent-beige, #E5D9C5);
+}
+
+.bespoke-shadow {
+  box-shadow: 0 4px 20px rgba(51, 40, 30, 0.05), 0 1px 3px rgba(51, 40, 30, 0.02);
+}
+
+.bespoke-shadow-md {
+  box-shadow: 0 10px 30px rgba(51, 40, 30, 0.07), 0 1px 3px rgba(51, 40, 30, 0.03), 0 0 0 1px #E5D9C5;
+}
+
+.bespoke-shadow-lg {
+  box-shadow: 0 20px 48px -12px rgba(51, 40, 30, 0.1), 0 4px 16px rgba(51, 40, 30, 0.04), 0 0 0 1px #E5D9C5;
+}
+
+/* ==========================================================================
+   Public Warm Luxury Landing Page Styles
+   ========================================================================== */
+.landing-page {
+  background-color: #F9F8F6 !important;
+  color: #33281E !important;
+}
+
+.landing-page .card-surface {
+  background-color: #FFFFFF;
+  border: 1px solid #E5D9C5;
+  box-shadow: 0 4px 20px rgba(51, 40, 30, 0.05);
+}
+
+.landing-page .text-muted {
+  color: #8C7A6B !important;
+}
+
+.landing-page .btn-primary {
+  background: #8B5E34;
+  color: #FFFFFF !important;
+  border: 1px solid #8B5E34;
+  border-radius: 9999px;
+  box-shadow: 0 4px 18px rgba(139, 94, 52, 0.22);
+  transition: all 0.3s ease-in-out;
+}
+.landing-page .btn-primary:hover {
+  background: #754E29;
+  border-color: #754E29;
+  box-shadow: 0 8px 24px rgba(139, 94, 52, 0.32);
+  transform: translateY(-2px);
+}
+.landing-page .btn-primary:active {
+  transform: translateY(0px) scale(0.98);
+}
+
+.landing-page .btn-ghost {
+  border: 1px solid #E5D9C5;
+  background: #FFFFFF;
+  color: #33281E;
+  border-radius: 9999px;
+  box-shadow: 0 2px 8px rgba(51, 40, 30, 0.03);
+  transition: all 0.3s ease-in-out;
+}
+.landing-page .btn-ghost:hover {
+  border-color: #8B5E34;
+  background: #F3EFEA;
+  color: #33281E;
+  transform: translateY(-2px);
+}
+.landing-page .btn-ghost:active {
+  transform: translateY(0px) scale(0.98);
+}
+
+.landing-page .text-gradient-brand {
+  color: #8B5E34;
+}
+
+/* Card hover animation */
+.card-hover-bespoke {
+  transition: all 0.3s ease-in-out;
+}
+.card-hover-bespoke:hover {
+  transform: translateY(-3px);
+  border-color: #8B5E34 !important;
+  box-shadow: 0 14px 34px -8px rgba(51, 40, 30, 0.09), 0 0 0 1px #E5D9C5 !important;
+}
