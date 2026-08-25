@@ -8,12 +8,6 @@ import {
   UserPlus,
   CreditCard,
   ScanLine,
-  TrendingUp,
-  ShieldCheck,
-  Sparkles,
-  AlertCircle,
-  Clock,
-  HeartPulse,
 } from "lucide-react";
 import { requireTenant } from "@/lib/tenant";
 import prisma from "@/lib/db";
@@ -147,32 +141,7 @@ export default async function DashboardPage() {
   }
 
   // Attendance and Occupancy Rates
-  const attendancePct =
-    activeMembers > 0 ? Math.round((todayCheckins / activeMembers) * 100) : 0;
-
-  // ── Compute GYM HEALTH SCORE (0 - 100) ──────────────────────────
-  // 1. Revenue Run-Rate (Max 20 pts)
   const monthlyInflow = monthRevenue._sum.totalAmount ?? 0;
-  const revScore = monthlyInflow > 100000 ? 20 : monthlyInflow > 50000 ? 16 : monthlyInflow > 15000 ? 12 : monthlyInflow > 0 ? 8 : 4;
-
-  // 2. Retention (Max 20 pts)
-  const retentionScore = overdueMembers === 0 ? 20 : overdueMembers < 5 ? 16 : overdueMembers < 15 ? 12 : 6;
-
-  // 3. Attendance Activity (Max 20 pts)
-  const attScore = attendancePct > 35 ? 20 : attendancePct > 20 ? 16 : attendancePct > 10 ? 12 : attendancePct > 0 ? 8 : 4;
-
-  // 4. Collections / Zero Overdue (Max 15 pts)
-  const colScore = overdueMembers === 0 ? 15 : overdueMembers < 3 ? 12 : overdueMembers < 8 ? 8 : 4;
-
-  // 5. Membership Growth Velocity (Max 15 pts)
-  const growthScore = newMembersThisMonth > 10 ? 15 : newMembersThisMonth > 3 ? 12 : newMembersThisMonth > 0 ? 8 : 4;
-
-  // 6. Trainer Allocation (Max 10 pts)
-  const trainerScore = totalTrainers > 0 && assignedMembersCount > 0 ? 10 : totalTrainers > 0 ? 7 : 5;
-
-  const totalHealthScore = Math.min(100, revScore + retentionScore + attScore + colScore + growthScore + trainerScore);
-  const healthGrade = totalHealthScore >= 85 ? "EXCELLENT" : totalHealthScore >= 70 ? "HEALTHY" : "NEEDS ATTENTION";
-  const healthColor = totalHealthScore >= 85 ? "text-emerald-800" : totalHealthScore >= 70 ? "text-[#8B5E34]" : "text-amber-800";
 
   return (
     <div className="space-y-6 max-w-full">
@@ -212,57 +181,6 @@ export default async function DashboardPage() {
               <span>Scan Dynamic Pass</span>
             </Button>
           </Link>
-        </div>
-      </div>
-
-      {/* Prominent GYM HEALTH SCORE BANNER */}
-      <div className="relative overflow-hidden rounded-3xl border border-[#E5D9C5] bg-gradient-to-br from-white via-[#FAF9F7] to-[#F3EFEA] p-6 md:p-7 shadow-[0_4px_25px_rgba(51,40,30,0.04)]">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <HeartPulse className="h-5 w-5 text-[#8B5E34]" />
-              <h2 className="font-mono text-xs font-bold uppercase tracking-widest text-[#8B5E34]">
-                Facility Health Score
-              </h2>
-              <Badge variant={totalHealthScore >= 80 ? "success" : "warning"} className="font-mono text-[10px]">
-                {healthGrade}
-              </Badge>
-            </div>
-            <p className="text-xs text-[#8C7A6B] max-w-xl">
-              Composite telemetry evaluating revenue velocity, renewal retention, attendance activity, collections, and coach allocation.
-            </p>
-
-            {/* Health Score Breakdown Badges */}
-            <div className="flex flex-wrap gap-2 pt-1 font-mono text-[11px]">
-              <span className="rounded-lg border border-[#E5D9C5] bg-white px-2.5 py-1 text-[#33281E]">
-                Revenue: <strong>{revScore}/20</strong>
-              </span>
-              <span className="rounded-lg border border-[#E5D9C5] bg-white px-2.5 py-1 text-[#33281E]">
-                Retention: <strong>{retentionScore}/20</strong>
-              </span>
-              <span className="rounded-lg border border-[#E5D9C5] bg-white px-2.5 py-1 text-[#33281E]">
-                Floor Activity: <strong>{attScore}/20</strong>
-              </span>
-              <span className="rounded-lg border border-[#E5D9C5] bg-white px-2.5 py-1 text-[#33281E]">
-                Collections: <strong>{colScore}/15</strong>
-              </span>
-              <span className="rounded-lg border border-[#E5D9C5] bg-white px-2.5 py-1 text-[#33281E]">
-                Growth: <strong>{growthScore}/15</strong>
-              </span>
-            </div>
-          </div>
-
-          {/* Big Score Gauge */}
-          <div className="flex items-center gap-4 shrink-0">
-            <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-[#8B5E34]/30 bg-white px-7 py-4 shadow-sm">
-              <span className={`font-display text-4xl font-black ${healthColor}`}>
-                {totalHealthScore}
-              </span>
-              <span className="font-mono text-[10px] font-bold text-[#8C7A6B] uppercase mt-0.5">
-                Out of 100
-              </span>
-            </div>
-          </div>
         </div>
       </div>
 
