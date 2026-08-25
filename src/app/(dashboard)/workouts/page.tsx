@@ -1,5 +1,7 @@
 import { requireTenant } from "@/lib/tenant";
 import prisma from "@/lib/db";
+import { getGymSubscription } from "@/lib/subscriptions";
+import { PlanUpgradeGate } from "@/components/dashboard/plan-upgrade-gate";
 import { formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { AddWorkoutDialog, AddDietDialog } from "./workout-form";
@@ -9,6 +11,37 @@ export const metadata = { title: "Workouts & Diets" };
 export default async function WorkoutsPage() {
   const session = await requireTenant();
   const gymId = session.user.gymId!;
+
+  const { config } = await getGymSubscription(gymId);
+
+  // Feature gate check for Workouts & Diet protocols (Requires Pro / Business tier)
+  if (!config.features.workouts_and_diets) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-[#33281E] tracking-tight">
+            Workouts &amp; Nutrition Protocols
+          </h1>
+          <p className="mt-1 text-xs text-[#8C7A6B]">
+            Prescribe periodized workout routines, RPE intensity logs, and macronutrient diet plans.
+          </p>
+        </div>
+
+        <PlanUpgradeGate
+          featureName="Strength &amp; Nutrition Engines"
+          requiredTier="Pro"
+          requiredPrice="₹3,499/mo"
+          description="Empower your coaches to prescribe periodized lifting routines, track progressive overload, and generate individualized macronutrient diet charts."
+          highlights={[
+            "Custom exercises with sets, reps, and RPE tracking",
+            "Individualized caloric & macronutrient targets",
+            "Direct member view inside athlete mobile portal",
+            "Trainer assignment & client compliance tracking",
+          ]}
+        />
+      </div>
+    );
+  }
 
   const [workouts, diets, members] = await Promise.all([
     prisma.workoutPlan.findMany({

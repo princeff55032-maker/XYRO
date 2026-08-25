@@ -13,6 +13,12 @@ import {
   attendanceSchema,
   trainerSchema,
 } from "@/lib/validations";
+import {
+  assertMemberQuota,
+  assertTrainerQuota,
+  assertPlanFeature,
+  getGymSubscription,
+} from "@/lib/subscriptions";
 
 export type ActionResult<T = unknown> = {
   ok: boolean;
@@ -111,17 +117,10 @@ export async function addMemberAction(input: {
     const phoneTaken = await prisma.user.findFirst({ where: { phone: data.phone } });
     if (phoneTaken) return { ok: false, error: "A user with this phone number already exists" };
 
+    // Enforce dynamic member quota according to active subscription plan
+    await assertMemberQuota(gym.id);
+
     const memberCount = await prisma.member.count({ where: { gymId: gym.id } });
-
-    // Enforce member limit on FREE plan
-    const subscription = await prisma.gymSubscription.findUnique({ where: { gymId: gym.id } });
-    if (subscription?.plan === "FREE" && memberCount >= 50) {
-      return {
-        ok: false,
-        error: "Free plan allows up to 50 members. Upgrade to Starter for more.",
-      };
-    }
-
     const memberId = generateMemberId(gym.gymCode, memberCount + 1);
     const rawPassword = `${data.phone.replace(/[^0-9]/g, "").slice(-4)}@xyro` || `${data.phone}@xyro`;
     const passwordHash = await bcrypt.hash(rawPassword, 10);
@@ -312,8 +311,7 @@ export async function importGymDataAction(
     );
     requirePermission(ctx, "members.create");
     const { gym } = ctx;
-
-    const subscription = await prisma.gymSubscription.findUnique({ where: { gymId: gym.id } });
+    const { config: planConfig } = await getGymSubscription(gym.id);
     let currentMemberCount = await prisma.member.count({ where: { gymId: gym.id, deletedAt: null } });
 
     let imported = 0;
@@ -334,13 +332,13 @@ export async function importGymDataAction(
         continue;
       }
 
-      // Check Free plan limit
-      if (subscription?.plan === "FREE" && currentMemberCount >= 50) {
+      // Check plan member limit dynamically
+      if (currentMemberCount >= planConfig.maxMembers) {
         errors.push({
           row: rowIndex,
           name: row.name,
           phone: row.phone,
-          error: "Free plan limit reached (max 50 members). Upgrade to Starter for unlimited imports.",
+          error: `${planConfig.name} athlete limit reached (${planConfig.maxMembers} max). Upgrade your plan to import more records.`,
         });
         continue;
       }
@@ -993,6 +991,9 @@ export async function addTrainerAction(input: {
     }
     const data = parsed.data;
 
+    // Enforce trainer quota by subscription tier
+    await assertTrainerQuota(ctx.gym.id);
+
     const emailTaken = await prisma.user.findUnique({ where: { email: data.email } });
     if (emailTaken) return { ok: false, error: "A user with this email already exists" };
 
@@ -1218,6 +1219,7 @@ export async function addWorkoutPlanAction(input: {
       { requireEmailVerified: true }
     );
     requirePermission(ctx, "workouts.manage");
+    await assertPlanFeature(ctx.gym.id, "workouts_and_diets");
 
     const member = await prisma.member.findFirst({
       where: { id: input.memberId, gymId: ctx.gym.id },
@@ -1297,6 +1299,7 @@ export async function addDietPlanAction(input: {
       { requireEmailVerified: true }
     );
     requirePermission(ctx, "diets.manage");
+    await assertPlanFeature(ctx.gym.id, "workouts_and_diets");
 
     const member = await prisma.member.findFirst({
       where: { id: input.memberId, gymId: ctx.gym.id },
@@ -1445,6 +1448,10 @@ export async function updateGymPreferencesAction(input: {
     );
     requirePermission(ctx, "settings.manage");
 
+    if (input.enableWhatsapp) {
+      await assertPlanFeature(ctx.gym.id, "whatsapp_automations");
+    }
+
     await prisma.gymSettings.upsert({
       where: { gymId: ctx.gym.id },
       create: {
@@ -1488,6 +1495,7 @@ export async function addClassAction(input: {
       ["GYM_OWNER", "GYM_ADMIN", "SUPER_ADMIN"],
       { requireEmailVerified: true }
     );
+    await assertPlanFeature(ctx.gym.id, "group_classes");
 
     if (!input.name || !input.dayOfWeek || !input.startTime || !input.endTime) {
       return { ok: false, error: "Class name, day, start, and end times are required." };

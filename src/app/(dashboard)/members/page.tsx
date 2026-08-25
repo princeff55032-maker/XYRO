@@ -1,5 +1,6 @@
 import { requireTenant } from "@/lib/tenant";
 import prisma from "@/lib/db";
+import { getGymSubscription } from "@/lib/subscriptions";
 import { formatDate, daysRemaining, getInitials } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { AddMemberDialog } from "./members-form";
@@ -13,7 +14,8 @@ export default async function MembersPage() {
   const session = await requireTenant();
   const gymId = session.user.gymId!;
 
-  const [members, plans] = await Promise.all([
+  const [{ config }, members, plans] = await Promise.all([
+    getGymSubscription(gymId),
     prisma.member.findMany({
       where: { gymId, deletedAt: null },
       include: {
@@ -39,7 +41,12 @@ export default async function MembersPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[#E5D9C5] pb-4">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight text-[#33281E]">Athlete Directory</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-display text-2xl font-bold tracking-tight text-[#33281E]">Athlete Directory</h1>
+            <Badge variant="outline" className="font-mono text-[10px] border-[#E5D9C5] bg-white text-[#8B5E34]">
+              {members.length} / {config.maxMembers === 999999 ? "∞" : config.maxMembers} ({config.badge})
+            </Badge>
+          </div>
           <p className="mt-0.5 text-xs text-[#8C7A6B]">
             {members.length} registered athlete{members.length === 1 ? "" : "s"} across active and paused tiers
           </p>

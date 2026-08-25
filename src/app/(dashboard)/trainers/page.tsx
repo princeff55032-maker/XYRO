@@ -1,5 +1,6 @@
 import { requireTenant } from "@/lib/tenant";
 import prisma from "@/lib/db";
+import { getGymSubscription } from "@/lib/subscriptions";
 import { getInitials } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { AddTrainerDialog } from "./trainers-form";
@@ -11,7 +12,8 @@ export default async function TrainersPage() {
   const session = await requireTenant();
   const gymId = session.user.gymId!;
 
-  const [trainers, rawMembers] = await Promise.all([
+  const [{ config }, trainers, rawMembers] = await Promise.all([
+    getGymSubscription(gymId),
     prisma.trainer.findMany({
       where: { gymId, deletedAt: null },
       include: {
@@ -54,9 +56,14 @@ export default async function TrainersPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-[#E5D9C5] pb-4">
         <div>
-          <h1 className="font-display text-2xl font-bold text-[#33281E] tracking-tight">
-            Coaching Staff &amp; Trainers
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-display text-2xl font-bold text-[#33281E] tracking-tight">
+              Coaching Staff &amp; Trainers
+            </h1>
+            <Badge variant="outline" className="font-mono text-[10px] border-[#E5D9C5] bg-white text-[#8B5E34]">
+              {trainers.length} / {config.maxTrainers === 999999 ? "∞" : config.maxTrainers} ({config.badge})
+            </Badge>
+          </div>
           <p className="mt-1 text-xs text-[#8C7A6B]">
             {trainers.length} certified coach{trainers.length === 1 ? "" : "es"} assigned across strength and conditioning
           </p>

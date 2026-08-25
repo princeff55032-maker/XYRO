@@ -1033,102 +1033,160 @@ export function SettingsClient({
 
         {/* 4. Subscription & Plan Tab */}
         <TabsContent value="subscription" className="space-y-6">
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2 rounded-3xl border border-[#E5D9C5] bg-white p-6 md:p-8 shadow-[0_4px_20px_rgba(51,40,30,0.03)]">
-              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#E5D9C5] pb-6">
-                <div>
-                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#8B5E34]">
-                    Current SaaS Subscription
-                  </span>
-                  <h3 className="mt-1 font-display text-2xl font-bold text-[#33281E]">
-                    {subscription ? `${subscription.plan} Plan` : "Starter Tier"}
-                  </h3>
-                </div>
-                <Badge
-                  variant={subscription?.status === "ACTIVE" ? "success" : "warning"}
-                  className="px-3 py-1 text-xs font-semibold"
-                >
-                  {subscription?.status || "TRIAL ACTIVE"}
-                </Badge>
+          <div className="rounded-3xl border border-[#E5D9C5] bg-white p-6 md:p-8 shadow-[0_4px_20px_rgba(51,40,30,0.03)]">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#E5D9C5] pb-6">
+              <div>
+                <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#8B5E34]">
+                  Active Facility Tier
+                </span>
+                <h3 className="mt-1 font-display text-2xl font-bold text-[#33281E]">
+                  {subscription ? `${subscription.plan} Tier` : "Studio Sandbox (Free Plan)"}
+                </h3>
               </div>
-
-              <div className="mt-6 grid gap-6 sm:grid-cols-2">
-                <div className="rounded-2xl border border-[#E5D9C5] bg-[#F9F8F6] p-4">
-                  <p className="text-xs text-[#8C7A6B]">Plan Status</p>
-                  <p className="mt-1 font-display text-lg font-bold text-[#33281E]">
-                    {subscription?.status || "Free Trial Period"}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-[#E5D9C5] bg-[#F9F8F6] p-4">
-                  <p className="text-xs text-[#8C7A6B]">Billing Cycle</p>
-                  <p className="mt-1 font-display text-lg font-bold text-[#33281E]">
-                    {subscription ? formatDate(subscription.endDate) : "Ongoing"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-8">
-                <h4 className="font-display text-sm font-bold text-[#33281E]">
-                  Included Features in Your Tier
-                </h4>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div className="flex items-center gap-2.5 text-xs font-medium text-[#33281E]">
-                    <Check className="h-4 w-4 text-emerald-700" />
-                    <span>Unlimited member registration</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs font-medium text-[#33281E]">
-                    <Check className="h-4 w-4 text-emerald-700" />
-                    <span>Touchless QR attendance tracking</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs font-medium text-[#33281E]">
-                    <Check className="h-4 w-4 text-emerald-700" />
-                    <span>Diet & workout plan generators</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs font-medium text-[#33281E]">
-                    <Check className="h-4 w-4 text-emerald-700" />
-                    <span>Trainer assignment & tracking</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs font-medium text-[#33281E]">
-                    <Check className="h-4 w-4 text-emerald-700" />
-                    <span>GST tax invoices & receipt logs</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs font-medium text-[#33281E]">
-                    <Check className="h-4 w-4 text-emerald-700" />
-                    <span>24/7 Priority support channel</span>
-                  </div>
-                </div>
-              </div>
+              <Badge
+                variant={subscription?.status === "ACTIVE" ? "success" : "warning"}
+                className="px-3 py-1 text-xs font-semibold font-mono"
+              >
+                {subscription?.status || "FREE TIER (ACTIVE)"}
+              </Badge>
             </div>
 
-            <div className="flex flex-col justify-between rounded-3xl border border-[#E5D9C5] bg-white p-6 md:p-8 shadow-[0_4px_20px_rgba(51,40,30,0.03)]">
-              <div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#8B5E34] text-white shadow-xs">
-                  <Crown className="h-6 w-6" />
-                </div>
-                <h3 className="mt-4 font-display text-lg font-bold text-[#33281E]">
-                  Upgrade to Enterprise
-                </h3>
-                <p className="mt-2 text-xs leading-relaxed text-[#8C7A6B]">
-                  Unlock multi-branch gym networks, biometric hardware integration, custom domain
-                  white-labeling, and WhatsApp verified business API.
+            <div className="mt-6 grid gap-4 sm:grid-cols-3">
+              <div className="rounded-2xl border border-[#E5D9C5] bg-[#F9F8F6] p-4">
+                <p className="text-xs font-mono text-[#8C7A6B] uppercase font-bold text-[10px]">Athlete Quota</p>
+                <p className="mt-1 font-display text-lg font-bold text-[#33281E]">
+                  {subscription?.plan === "BUSINESS" || subscription?.plan === "PRO"
+                    ? "Unlimited Athletes"
+                    : subscription?.plan === "STARTER"
+                    ? "Up to 300 Athletes"
+                    : "Up to 50 Athletes (Free)"}
                 </p>
               </div>
 
-              <div className="mt-6">
-                <Button
-                  type="button"
-                  onClick={() => {
-                    setEnterpriseSubmitted(false);
-                    setShowEnterpriseModal(true);
-                  }}
-                  className="btn-primary w-full text-white font-bold cursor-pointer"
-                >
-                  <Sparkles className="mr-2 h-4 w-4 text-white" />
-                  Contact Enterprise Sales
-                </Button>
+              <div className="rounded-2xl border border-[#E5D9C5] bg-[#F9F8F6] p-4">
+                <p className="text-xs font-mono text-[#8C7A6B] uppercase font-bold text-[10px]">Coach / Trainer Quota</p>
+                <p className="mt-1 font-display text-lg font-bold text-[#33281E]">
+                  {subscription?.plan === "BUSINESS" || subscription?.plan === "PRO"
+                    ? "Unlimited Coaches"
+                    : subscription?.plan === "STARTER"
+                    ? "Up to 3 Coaches"
+                    : "1 Coach (Free Tier)"}
+                </p>
               </div>
 
+              <div className="rounded-2xl border border-[#E5D9C5] bg-[#F9F8F6] p-4">
+                <p className="text-xs font-mono text-[#8C7A6B] uppercase font-bold text-[10px]">Billing Status</p>
+                <p className="mt-1 font-display text-lg font-bold text-[#33281E]">
+                  {subscription?.endDate ? formatDate(subscription.endDate) : "Ongoing / Free"}
+                </p>
+              </div>
+            </div>
+
+            {/* 4 Tier Cards */}
+            <div className="mt-8">
+              <h4 className="font-display text-base font-bold text-[#33281E] mb-4">
+                Available Subscription Tiers
+              </h4>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {[
+                  {
+                    plan: "FREE",
+                    name: "Studio Sandbox",
+                    price: "₹0",
+                    period: "/forever",
+                    badge: "FREE",
+                    features: ["Max 50 Athletes", "1 Coach", "Dynamic QR Passes", "Manual Cash Ledger"],
+                  },
+                  {
+                    plan: "STARTER",
+                    name: "Single Facility",
+                    price: "₹1,499",
+                    period: "/mo",
+                    badge: "STARTER",
+                    features: ["Max 300 Athletes", "3 Coaches", "GST Invoicing", "WhatsApp Sequences", "Revenue Analytics"],
+                  },
+                  {
+                    plan: "PRO",
+                    name: "Performance Gym",
+                    price: "₹3,499",
+                    period: "/mo",
+                    badge: "PRO",
+                    features: ["Unlimited Athletes", "Unlimited Coaches", "Strength & Diet Builders", "Group Classes", "Staff RBAC"],
+                  },
+                  {
+                    plan: "BUSINESS",
+                    name: "Enterprise Chain",
+                    price: "₹7,999",
+                    period: "/mo",
+                    badge: "ENTERPRISE",
+                    features: ["Multi-Branch Roaming", "Turnstile Hardware API", "Biometric Webhooks", "Priority SLA"],
+                  },
+                ].map((tier) => {
+                  const isCurrent = (subscription?.plan || "FREE") === tier.plan;
+                  return (
+                    <div
+                      key={tier.plan}
+                      className={`relative flex flex-col justify-between rounded-2xl border p-5 transition-all ${
+                        isCurrent
+                          ? "border-[#8B5E34] bg-[#FAF8F5] ring-2 ring-[#8B5E34]/20"
+                          : "border-[#E5D9C5] bg-white hover:border-[#8B5E34]/50"
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[10px] font-bold text-[#8B5E34] uppercase">
+                            {tier.badge}
+                          </span>
+                          {isCurrent && (
+                            <Badge variant="success" className="text-[9px] font-mono px-1.5 py-0">
+                              ACTIVE
+                            </Badge>
+                          )}
+                        </div>
+                        <h5 className="font-display text-base font-bold text-[#33281E] mt-1">
+                          {tier.name}
+                        </h5>
+                        <p className="mt-2 font-display text-xl font-bold text-[#33281E]">
+                          {tier.price}{" "}
+                          <span className="font-sans text-xs font-normal text-[#8C7A6B]">
+                            {tier.period}
+                          </span>
+                        </p>
+
+                        <ul className="mt-4 space-y-2 text-xs text-[#8C7A6B]">
+                          {tier.features.map((f, i) => (
+                            <li key={i} className="flex items-center gap-1.5">
+                              <Check className="h-3.5 w-3.5 text-emerald-700 shrink-0" />
+                              <span>{f}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="mt-5 pt-3 border-t border-[#E5D9C5]">
+                        {isCurrent ? (
+                          <span className="block text-center text-xs font-bold text-[#8B5E34] py-1.5">
+                            Current Plan
+                          </span>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEnterpriseSubmitted(false);
+                              setShowEnterpriseModal(true);
+                            }}
+                            className="w-full text-xs font-bold border-[#8B5E34] text-[#8B5E34] hover:bg-[#8B5E34] hover:text-white"
+                          >
+                            Upgrade to {tier.badge}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </TabsContent>
