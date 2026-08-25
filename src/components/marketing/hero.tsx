@@ -42,7 +42,7 @@ export function Hero() {
           }}
         >
           Run Your Entire Gym{" "}
-          <span className="text-[#8B5E34]">From Your Phone.</span>
+          <span className="text-[#8B5E34]">From Your System.</span>
         </h1>
 
         {/* Outcome-oriented copywriting */}
