@@ -51,9 +51,9 @@ const capabilities = [
   },
   {
     icon: ShieldCheck,
-    tag: "SECURITY ARCHITECTURE",
-    title: "Isolated Cryptographic Tenancy",
-    desc: "Every gym operates on a dedicated logical boundary. Your gym financials, client contacts, and staff records remain completely inaccessible to any outside party.",
+    tag: "ENTERPRISE SECURITY",
+    title: "Multi-Tenant Isolation & Audit Trail",
+    desc: "Every gym operates inside an isolated workspace boundary with immutable event logs, staff RBAC permissions, and verified server-side security.",
     accent: "#8B5E34",
   },
 ];

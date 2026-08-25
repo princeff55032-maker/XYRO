@@ -281,6 +281,216 @@ export async function removeMemberAction(id: string): Promise<ActionResult> {
   }
 }
 
+export type ImportMemberRow = {
+  name: string;
+  phone: string;
+  email?: string;
+  planName?: string;
+  startDate?: string;
+  expiryDate?: string;
+  amount?: string | number;
+  paymentStatus?: string;
+  trainerName?: string;
+  gender?: string;
+  address?: string;
+};
+
+export type ImportResult = {
+  total: number;
+  imported: number;
+  skipped: number;
+  errors: Array<{ row: number; name: string; phone: string; error: string }>;
+};
+
+export async function importGymDataAction(
+  rows: ImportMemberRow[]
+): Promise<ActionResult<ImportResult>> {
+  try {
+    const ctx = await requireWorkspaceAuth(
+      ["GYM_OWNER", "GYM_ADMIN", "SUPER_ADMIN"],
+      { requireEmailVerified: true }
+    );
+    requirePermission(ctx, "members.create");
+    const { gym } = ctx;
+
+    const subscription = await prisma.gymSubscription.findUnique({ where: { gymId: gym.id } });
+    let currentMemberCount = await prisma.member.count({ where: { gymId: gym.id, deletedAt: null } });
+
+    let imported = 0;
+    let skipped = 0;
+    const errors: Array<{ row: number; name: string; phone: string; error: string }> = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowIndex = i + 1;
+
+      if (!row.name || !row.name.trim() || !row.phone || !row.phone.trim()) {
+        errors.push({
+          row: rowIndex,
+          name: row.name || "Unknown",
+          phone: row.phone || "Missing",
+          error: "Name and Phone are mandatory fields.",
+        });
+        continue;
+      }
+
+      // Check Free plan limit
+      if (subscription?.plan === "FREE" && currentMemberCount >= 50) {
+        errors.push({
+          row: rowIndex,
+          name: row.name,
+          phone: row.phone,
+          error: "Free plan limit reached (max 50 members). Upgrade to Starter for unlimited imports.",
+        });
+        continue;
+      }
+
+      const cleanPhone = row.phone.trim();
+      const cleanEmail = row.email?.trim() || `${cleanPhone.replace(/[^0-9]/g, "")}@xyro.local`;
+
+      // Check if user already exists
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          OR: [{ phone: cleanPhone }, { email: cleanEmail }],
+        },
+      });
+
+      if (existingUser) {
+        // Check if already in this gym
+        const existingMember = await prisma.member.findFirst({
+          where: { userId: existingUser.id, gymId: gym.id },
+        });
+        if (existingMember) {
+          skipped++;
+          continue;
+        }
+      }
+
+      try {
+        currentMemberCount++;
+        const memberId = generateMemberId(gym.gymCode, currentMemberCount);
+        const rawPassword = `${cleanPhone.replace(/[^0-9]/g, "").slice(-4)}@xyro` || `${cleanPhone}@xyro`;
+        const passwordHash = await bcrypt.hash(rawPassword, 10);
+
+        await prisma.$transaction(async (tx) => {
+          let user = existingUser;
+          if (!user) {
+            user = await tx.user.create({
+              data: {
+                name: row.name.trim(),
+                email: cleanEmail,
+                phone: cleanPhone,
+                password: passwordHash,
+                role: "CUSTOMER",
+                status: "ACTIVE",
+              },
+            });
+          }
+
+          const member = await tx.member.create({
+            data: {
+              memberId,
+              gymId: gym.id,
+              userId: user.id,
+              address: row.address?.trim() || null,
+              gender: (row.gender?.toUpperCase() as "MALE" | "FEMALE" | "OTHER") || undefined,
+              isActive: true,
+            },
+          });
+
+          // If plan specified, link plan & membership
+          if (row.planName && row.planName.trim()) {
+            let plan = await tx.membershipPlan.findFirst({
+              where: {
+                gymId: gym.id,
+                name: { equals: row.planName.trim(), mode: "insensitive" },
+                deletedAt: null,
+              },
+            });
+
+            if (!plan) {
+              const priceNum = Number(row.amount) || 2499;
+              plan = await tx.membershipPlan.create({
+                data: {
+                  gymId: gym.id,
+                  name: row.planName.trim(),
+                  price: priceNum,
+                  durationDays: 30,
+                  sortOrder: 0,
+                },
+              });
+            }
+
+            const start = row.startDate ? new Date(row.startDate) : new Date();
+            const end = row.expiryDate ? new Date(row.expiryDate) : new Date(start.getTime() + plan.durationDays * 86400000);
+            const now = new Date();
+
+            const membership = await tx.membership.create({
+              data: {
+                gymId: gym.id,
+                memberId: member.id,
+                planId: plan.id,
+                status: end >= now ? "ACTIVE" : "EXPIRED",
+                startDate: start,
+                endDate: end,
+                daysRemaining: Math.max(0, Math.ceil((end.getTime() - now.getTime()) / 86400000)),
+                autoRenew: false,
+              },
+            });
+
+            if (row.amount !== undefined) {
+              const amountNum = Number(row.amount) || plan.price;
+              await tx.payment.create({
+                data: {
+                  gymId: gym.id,
+                  memberId: member.id,
+                  membershipId: membership.id,
+                  amount: amountNum,
+                  tax: 0,
+                  discount: 0,
+                  totalAmount: amountNum,
+                  status: (row.paymentStatus?.toUpperCase() as never) || "PAID",
+                  method: "CASH",
+                  paidAt: start,
+                  notes: `Imported via Migration CSV — ${plan.name}`,
+                },
+              });
+            }
+          }
+        });
+
+        imported++;
+      } catch (err) {
+        errors.push({
+          row: rowIndex,
+          name: row.name,
+          phone: row.phone,
+          error: err instanceof Error ? err.message : "Database transaction failed",
+        });
+      }
+    }
+
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "MEMBERS_BATCH_IMPORT",
+      resource: "member",
+      metadata: { total: rows.length, imported, skipped, errorsCount: errors.length },
+    });
+
+    return {
+      ok: true,
+      data: {
+        total: rows.length,
+        imported,
+        skipped,
+        errors,
+      },
+    };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
+}
 
 export async function assignPlanToMemberAction(input: {
   memberId: string;
