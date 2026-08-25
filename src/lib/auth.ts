@@ -193,13 +193,87 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
+    async signIn({ user, account }) {
+      if (account?.provider === "google") {
+        if (!user.email) return false;
+
+        const cleanEmail = user.email.toLowerCase();
+        let dbUser = await prisma.user.findUnique({
+          where: { email: cleanEmail },
+          include: {
+            ownedGyms: { select: { id: true, gymCode: true }, take: 1 },
+            gymStaff: { select: { gymId: true, gym: { select: { gymCode: true } } }, take: 1 },
+          },
+        });
+
+        if (!dbUser) {
+          // Auto-provision Gym Owner account
+          dbUser = await prisma.user.create({
+            data: {
+              name: user.name || "Gym Administrator",
+              email: cleanEmail,
+              image: user.image,
+              role: "GYM_OWNER",
+              status: "ACTIVE",
+            },
+            include: {
+              ownedGyms: { select: { id: true, gymCode: true }, take: 1 },
+              gymStaff: { select: { gymId: true, gym: { select: { gymCode: true } } }, take: 1 },
+            },
+          });
+        }
+
+        if (dbUser.status === "SUSPENDED" || dbUser.status === "DEACTIVATED") {
+          return false;
+        }
+
+        user.id = dbUser.id;
+        user.role = dbUser.role;
+        user.gymId = dbUser.ownedGyms[0]?.id || dbUser.gymStaff[0]?.gymId || null;
+        user.gymCode = dbUser.ownedGyms[0]?.gymCode || dbUser.gymStaff[0]?.gym?.gymCode || null;
+      }
+      return true;
+    },
     async jwt({ token, user }) {
       if (user) {
+        token.sub = user.id;
         token.role = user.role;
         token.gymId = user.gymId;
         token.gymCode = user.gymCode;
         token.memberId = user.memberId;
       }
+
+      // Re-hydrate gym association if not present in token
+      if (token.sub && !token.gymId) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.sub },
+          select: {
+            role: true,
+            ownedGyms: { select: { id: true, gymCode: true }, take: 1 },
+            gymStaff: { select: { gymId: true, gym: { select: { gymCode: true } } }, take: 1 },
+            trainer: { select: { gymId: true, gym: { select: { gymCode: true } } } },
+            member: { select: { memberId: true, gymId: true, gym: { select: { gymCode: true } } } },
+          },
+        });
+
+        if (dbUser) {
+          token.role = dbUser.role;
+          token.gymId =
+            dbUser.ownedGyms[0]?.id ||
+            dbUser.gymStaff[0]?.gymId ||
+            dbUser.trainer?.gymId ||
+            dbUser.member?.gymId ||
+            null;
+          token.gymCode =
+            dbUser.ownedGyms[0]?.gymCode ||
+            dbUser.gymStaff[0]?.gym?.gymCode ||
+            dbUser.trainer?.gym?.gymCode ||
+            dbUser.member?.gym?.gymCode ||
+            null;
+          token.memberId = dbUser.member?.memberId || null;
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {
