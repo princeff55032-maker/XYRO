@@ -20,8 +20,8 @@ const plans = [
     featured: false,
   },
   {
-    name: "Single Facility",
-    price: "₹999",
+    name: "Single Facility (Starter)",
+    price: "₹1,499",
     period: "/month",
     badge: "ESTABLISHED",
     tagline: "For independent fitness gyms and strength boxes.",
@@ -37,8 +37,8 @@ const plans = [
     featured: false,
   },
   {
-    name: "Performance Gym",
-    price: "₹2,499",
+    name: "Performance Gym (Pro)",
+    price: "₹3,499",
     period: "/month",
     badge: "MOST POPULAR FOR GYMS",
     tagline: "For high-volume gyms with trainers and group classes.",
@@ -55,8 +55,8 @@ const plans = [
     featured: true,
   },
   {
-    name: "Enterprise Chain",
-    price: "₹5,999",
+    name: "Enterprise Chain (Business)",
+    price: "₹7,999",
     period: "/month",
     badge: "MULTI-LOCATION",
     tagline: "For multi-branch gym franchises and health networks.",
