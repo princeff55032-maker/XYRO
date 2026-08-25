@@ -29,7 +29,7 @@ export default async function MembersPage() {
     }),
     prisma.membershipPlan.findMany({
       where: { gymId, deletedAt: null, isActive: true },
-      select: { id: true, name: true },
+      select: { id: true, name: true, price: true, durationDays: true },
       orderBy: { sortOrder: "asc" },
     }),
   ]);
@@ -144,6 +144,7 @@ export default async function MembersPage() {
                           memberId={m.id}
                           memberName={m.user.name}
                           isActive={m.isActive}
+                          plans={plans}
                         />
                       </td>
                     </tr>

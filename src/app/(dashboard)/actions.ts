@@ -3,6 +3,8 @@
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/db";
 import { requireWorkspaceAuth } from "@/lib/tenant";
+import { requirePermission } from "@/lib/permissions";
+import { logAuditEvent } from "@/lib/audit";
 import { generateMemberId } from "@/lib/utils";
 import {
   addMemberSchema,
@@ -80,6 +82,7 @@ export async function addMemberAction(input: {
       ["GYM_OWNER", "GYM_ADMIN", "RECEPTIONIST", "SUPER_ADMIN"],
       { requireEmailVerified: true }
     );
+    requirePermission(ctx, "members.create");
 
     const parsed = addMemberSchema.safeParse({
       ...input,
@@ -123,6 +126,8 @@ export async function addMemberAction(input: {
     const rawPassword = `${data.phone.replace(/[^0-9]/g, "").slice(-4)}@xyro` || `${data.phone}@xyro`;
     const passwordHash = await bcrypt.hash(rawPassword, 10);
 
+    let createdMemberId: string = "";
+
     await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
@@ -147,6 +152,7 @@ export async function addMemberAction(input: {
           isActive: true,
         },
       });
+      createdMemberId = member.id;
 
       // Optional: activate a membership immediately
       if (plan) {
@@ -182,6 +188,15 @@ export async function addMemberAction(input: {
       }
     });
 
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "MEMBER_CREATE",
+      resource: "member",
+      resourceId: createdMemberId,
+      metadata: { name: data.name, memberId, email: data.email },
+    });
+
     return {
       ok: true,
       data: {
@@ -205,14 +220,25 @@ export async function toggleMemberActiveAction(id: string): Promise<ActionResult
       ["GYM_OWNER", "GYM_ADMIN", "RECEPTIONIST", "SUPER_ADMIN"],
       { requireEmailVerified: true }
     );
+    requirePermission(ctx, "members.edit");
 
     const member = await prisma.member.findFirst({ where: { id, gymId: ctx.gym.id } });
     if (!member) return { ok: false, error: "Member not found" };
 
-    await prisma.member.update({
+    const updated = await prisma.member.update({
       where: { id },
       data: { isActive: !member.isActive },
     });
+
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "MEMBER_STATUS_TOGGLE",
+      resource: "member",
+      resourceId: id,
+      metadata: { isActive: updated.isActive },
+    });
+
     return { ok: true };
   } catch (e) {
     return { ok: false, error: message(e) };
@@ -225,6 +251,7 @@ export async function removeMemberAction(id: string): Promise<ActionResult> {
       ["GYM_OWNER", "GYM_ADMIN", "SUPER_ADMIN"],
       { requireEmailVerified: true }
     );
+    requirePermission(ctx, "members.delete");
 
     const member = await prisma.member.findFirst({
       where: { id, gymId: ctx.gym.id, deletedAt: null },
@@ -239,12 +266,102 @@ export async function removeMemberAction(id: string): Promise<ActionResult> {
         isActive: false,
       },
     });
+
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "MEMBER_DELETE",
+      resource: "member",
+      resourceId: id,
+    });
+
     return { ok: true };
   } catch (e) {
     return { ok: false, error: message(e) };
   }
 }
 
+
+export async function assignPlanToMemberAction(input: {
+  memberId: string;
+  planId: string;
+  paymentMethod?: string;
+  notes?: string;
+}): Promise<ActionResult> {
+  try {
+    const ctx = await requireWorkspaceAuth(
+      ["GYM_OWNER", "GYM_ADMIN", "RECEPTIONIST", "SUPER_ADMIN"],
+      { requireEmailVerified: true }
+    );
+    requirePermission(ctx, "members.edit");
+    const { gym } = ctx;
+
+    const member = await prisma.member.findFirst({
+      where: { id: input.memberId, gymId: gym.id, deletedAt: null },
+      include: { user: true },
+    });
+    if (!member) return { ok: false, error: "Member not found" };
+
+    const plan = await prisma.membershipPlan.findFirst({
+      where: { id: input.planId, gymId: gym.id, deletedAt: null, isActive: true },
+    });
+    if (!plan) return { ok: false, error: "Membership plan not found or inactive" };
+
+    await prisma.$transaction(async (tx) => {
+      const now = new Date();
+      const existing = await tx.membership.findFirst({
+        where: { memberId: member.id, gymId: gym.id, status: "ACTIVE" },
+        orderBy: { endDate: "desc" },
+      });
+
+      const startDate = existing && existing.endDate > now ? existing.endDate : now;
+      const endDate = new Date(startDate.getTime() + plan.durationDays * 86400000);
+
+      const membership = await tx.membership.create({
+        data: {
+          gymId: gym.id,
+          memberId: member.id,
+          planId: plan.id,
+          status: "ACTIVE",
+          startDate,
+          endDate,
+          daysRemaining: Math.max(0, Math.ceil((endDate.getTime() - now.getTime()) / 86400000)),
+          autoRenew: false,
+        },
+      });
+
+      // Automatically record in payment ledger
+      await tx.payment.create({
+        data: {
+          gymId: gym.id,
+          memberId: member.id,
+          membershipId: membership.id,
+          amount: plan.price,
+          tax: 0,
+          discount: 0,
+          totalAmount: plan.price,
+          status: "PAID",
+          method: (input.paymentMethod as never) || "CASH",
+          paidAt: new Date(),
+          notes: input.notes || `Plan Assigned — ${plan.name}`,
+        },
+      });
+    });
+
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "PLAN_ASSIGN",
+      resource: "member",
+      resourceId: member.id,
+      metadata: { planName: plan.name, price: plan.price },
+    });
+
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /* Membership plans                                                    */
@@ -265,6 +382,7 @@ export async function addPlanAction(input: {
       ["GYM_OWNER", "GYM_ADMIN", "SUPER_ADMIN"],
       { requireEmailVerified: true }
     );
+    requirePermission(ctx, "settings.manage");
 
     const parsed = membershipPlanSchema.safeParse({
       name: input.name,
@@ -283,9 +401,19 @@ export async function addPlanAction(input: {
     }
     const data = parsed.data;
 
-    await prisma.membershipPlan.create({
+    const createdPlan = await prisma.membershipPlan.create({
       data: { ...data, gymId: ctx.gym.id, sortOrder: 0 },
     });
+
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "PLAN_CREATE",
+      resource: "membership_plan",
+      resourceId: createdPlan.id,
+      metadata: { name: createdPlan.name, price: createdPlan.price },
+    });
+
     return { ok: true };
   } catch (e) {
     return { ok: false, error: message(e) };
@@ -298,6 +426,7 @@ export async function deactivatePlanAction(id: string): Promise<ActionResult> {
       ["GYM_OWNER", "GYM_ADMIN", "SUPER_ADMIN"],
       { requireEmailVerified: true }
     );
+    requirePermission(ctx, "settings.manage");
 
     const plan = await prisma.membershipPlan.findFirst({
       where: { id, gymId: ctx.gym.id },
@@ -308,6 +437,16 @@ export async function deactivatePlanAction(id: string): Promise<ActionResult> {
       where: { id },
       data: { deletedAt: new Date() },
     });
+
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "PLAN_DEACTIVATE",
+      resource: "membership_plan",
+      resourceId: id,
+      metadata: { name: plan.name },
+    });
+
     return { ok: true };
   } catch (e) {
     return { ok: false, error: message(e) };
@@ -330,6 +469,7 @@ export async function recordPaymentAction(input: {
       ["GYM_OWNER", "GYM_ADMIN", "RECEPTIONIST", "SUPER_ADMIN"],
       { requireEmailVerified: true }
     );
+    requirePermission(ctx, "payments.create");
 
     const parsed = paymentSchema.safeParse({
       memberId: input.memberId,
@@ -399,6 +539,14 @@ export async function recordPaymentAction(input: {
       });
     });
 
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "PAYMENT_CREATE",
+      resource: "payment",
+      metadata: { memberId: data.memberId, amount: data.amount, method: data.method },
+    });
+
     return { ok: true };
   } catch (e) {
     return { ok: false, error: message(e) };
@@ -418,6 +566,7 @@ export async function updatePaymentAction(input: {
       ["GYM_OWNER", "GYM_ADMIN", "RECEPTIONIST", "SUPER_ADMIN"],
       { requireEmailVerified: true }
     );
+    requirePermission(ctx, "payments.edit");
 
     const payment = await prisma.payment.findFirst({
       where: { id: input.paymentId, gymId: ctx.gym.id },
@@ -441,6 +590,101 @@ export async function updatePaymentAction(input: {
       },
     });
 
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "PAYMENT_UPDATE",
+      resource: "payment",
+      resourceId: payment.id,
+      metadata: { amount: amountNum, status: input.status },
+    });
+
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
+}
+
+export async function voidPaymentAction(input: {
+  paymentId: string;
+  reason: string;
+}): Promise<ActionResult> {
+  try {
+    const ctx = await requireWorkspaceAuth(
+      ["GYM_OWNER", "GYM_ADMIN", "SUPER_ADMIN"],
+      { requireEmailVerified: true }
+    );
+    requirePermission(ctx, "payments.refund");
+
+    const payment = await prisma.payment.findFirst({
+      where: { id: input.paymentId, gymId: ctx.gym.id },
+    });
+    if (!payment) return { ok: false, error: "Payment record not found" };
+
+    const before = { status: payment.status, amount: payment.totalAmount };
+
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        status: "FAILED",
+        notes: payment.notes ? `${payment.notes} | [VOIDED: ${input.reason}]` : `[VOIDED: ${input.reason}]`,
+      },
+    });
+
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "PAYMENT_VOID",
+      resource: "payment",
+      resourceId: input.paymentId,
+      before,
+      after: { status: "VOIDED", reason: input.reason },
+      metadata: { reason: input.reason },
+    });
+
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
+}
+
+export async function refundPaymentAction(input: {
+  paymentId: string;
+  reason: string;
+}): Promise<ActionResult> {
+  try {
+    const ctx = await requireWorkspaceAuth(
+      ["GYM_OWNER", "GYM_ADMIN", "SUPER_ADMIN"],
+      { requireEmailVerified: true }
+    );
+    requirePermission(ctx, "payments.refund");
+
+    const payment = await prisma.payment.findFirst({
+      where: { id: input.paymentId, gymId: ctx.gym.id },
+    });
+    if (!payment) return { ok: false, error: "Payment record not found" };
+
+    const before = { status: payment.status, amount: payment.totalAmount };
+
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        status: "REFUNDED",
+        notes: payment.notes ? `${payment.notes} | [REFUNDED: ${input.reason}]` : `[REFUNDED: ${input.reason}]`,
+      },
+    });
+
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "PAYMENT_REFUND",
+      resource: "payment",
+      resourceId: input.paymentId,
+      before,
+      after: { status: "REFUNDED", reason: input.reason },
+      metadata: { amount: payment.totalAmount, reason: input.reason },
+    });
+
     return { ok: true };
   } catch (e) {
     return { ok: false, error: message(e) };
@@ -450,25 +694,7 @@ export async function updatePaymentAction(input: {
 export async function deletePaymentAction(input: {
   paymentId: string;
 }): Promise<ActionResult> {
-  try {
-    const ctx = await requireWorkspaceAuth(
-      ["GYM_OWNER", "GYM_ADMIN", "SUPER_ADMIN"],
-      { requireEmailVerified: true }
-    );
-
-    const payment = await prisma.payment.findFirst({
-      where: { id: input.paymentId, gymId: ctx.gym.id },
-    });
-    if (!payment) return { ok: false, error: "Payment record not found" };
-
-    await prisma.payment.delete({
-      where: { id: payment.id },
-    });
-
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: message(e) };
-  }
+  return voidPaymentAction({ paymentId: input.paymentId, reason: "Archived by Administrator" });
 }
 
 /* ------------------------------------------------------------------ */
@@ -549,6 +775,7 @@ export async function addTrainerAction(input: {
       ["GYM_OWNER", "GYM_ADMIN", "SUPER_ADMIN"],
       { requireEmailVerified: true }
     );
+    requirePermission(ctx, "trainers.manage");
 
     const parsed = trainerSchema.safeParse(input);
     if (!parsed.success) {
@@ -576,7 +803,7 @@ export async function addTrainerAction(input: {
       },
     });
 
-    await prisma.trainer.create({
+    const trainer = await prisma.trainer.create({
       data: {
         gymId: ctx.gym.id,
         userId: user.id,
@@ -584,6 +811,15 @@ export async function addTrainerAction(input: {
         experience: data.experience,
         bio: data.bio,
       },
+    });
+
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "TRAINER_CREATE",
+      resource: "trainer",
+      resourceId: trainer.id,
+      metadata: { name: data.name, email: data.email },
     });
 
     return {
@@ -608,16 +844,27 @@ export async function toggleTrainerActiveAction(id: string): Promise<ActionResul
       ["GYM_OWNER", "GYM_ADMIN", "SUPER_ADMIN"],
       { requireEmailVerified: true }
     );
+    requirePermission(ctx, "trainers.manage");
 
     const trainer = await prisma.trainer.findFirst({
       where: { id, gymId: ctx.gym.id },
     });
     if (!trainer) return { ok: false, error: "Trainer not found" };
 
-    await prisma.trainer.update({
+    const updated = await prisma.trainer.update({
       where: { id },
       data: { isActive: !trainer.isActive },
     });
+
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "TRAINER_STATUS_TOGGLE",
+      resource: "trainer",
+      resourceId: id,
+      metadata: { isActive: updated.isActive },
+    });
+
     return { ok: true };
   } catch (e) {
     return { ok: false, error: message(e) };
@@ -630,6 +877,7 @@ export async function removeTrainerAction(id: string): Promise<ActionResult> {
       ["GYM_OWNER", "GYM_ADMIN", "SUPER_ADMIN"],
       { requireEmailVerified: true }
     );
+    requirePermission(ctx, "trainers.manage");
 
     const trainer = await prisma.trainer.findFirst({
       where: { id, gymId: ctx.gym.id, deletedAt: null },
@@ -650,6 +898,15 @@ export async function removeTrainerAction(id: string): Promise<ActionResult> {
         isActive: false,
       },
     });
+
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "TRAINER_DELETE",
+      resource: "trainer",
+      resourceId: id,
+    });
+
     return { ok: true };
   } catch (e) {
     return { ok: false, error: message(e) };
@@ -665,6 +922,7 @@ export async function assignMemberToTrainerAction(input: {
       ["GYM_OWNER", "GYM_ADMIN", "SUPER_ADMIN"],
       { requireEmailVerified: true }
     );
+    requirePermission(ctx, "trainers.manage");
 
     const member = await prisma.member.findFirst({
       where: { id: input.memberId, gymId: ctx.gym.id },
@@ -691,6 +949,7 @@ export async function assignMultipleMembersToTrainerAction(input: {
       ["GYM_OWNER", "GYM_ADMIN", "SUPER_ADMIN"],
       { requireEmailVerified: true }
     );
+    requirePermission(ctx, "trainers.manage");
 
     const trainer = await prisma.trainer.findFirst({
       where: { id: input.trainerId, gymId: ctx.gym.id, deletedAt: null },
@@ -718,6 +977,15 @@ export async function assignMultipleMembersToTrainerAction(input: {
       });
     }
 
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "TRAINER_ROSTER_ASSIGN",
+      resource: "trainer",
+      resourceId: trainer.id,
+      metadata: { memberIds: input.memberIds },
+    });
+
     return { ok: true };
   } catch (e) {
     return { ok: false, error: message(e) };
@@ -739,6 +1007,7 @@ export async function addWorkoutPlanAction(input: {
       ["GYM_OWNER", "GYM_ADMIN", "TRAINER", "SUPER_ADMIN"],
       { requireEmailVerified: true }
     );
+    requirePermission(ctx, "workouts.manage");
 
     const member = await prisma.member.findFirst({
       where: { id: input.memberId, gymId: ctx.gym.id },
@@ -779,7 +1048,7 @@ export async function addWorkoutPlanAction(input: {
       return { ok: false, error: "Add at least one exercise line" };
     }
 
-    await prisma.workoutPlan.create({
+    const createdWorkout = await prisma.workoutPlan.create({
       data: {
         gymId: ctx.gym.id,
         memberId: member.id,
@@ -789,6 +1058,16 @@ export async function addWorkoutPlanAction(input: {
         exercises: { create: exercises },
       },
     });
+
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "WORKOUT_PLAN_CREATE",
+      resource: "workout_plan",
+      resourceId: createdWorkout.id,
+      metadata: { memberId: member.id, name: input.name },
+    });
+
     return { ok: true };
   } catch (e) {
     return { ok: false, error: message(e) };
@@ -807,6 +1086,7 @@ export async function addDietPlanAction(input: {
       ["GYM_OWNER", "GYM_ADMIN", "TRAINER", "SUPER_ADMIN"],
       { requireEmailVerified: true }
     );
+    requirePermission(ctx, "diets.manage");
 
     const member = await prisma.member.findFirst({
       where: { id: input.memberId, gymId: ctx.gym.id },
@@ -846,7 +1126,7 @@ export async function addDietPlanAction(input: {
       return { ok: false, error: "Add at least one meal line" };
     }
 
-    await prisma.dietPlan.create({
+    const createdDiet = await prisma.dietPlan.create({
       data: {
         gymId: ctx.gym.id,
         memberId: member.id,
@@ -857,6 +1137,16 @@ export async function addDietPlanAction(input: {
         meals: { create: meals },
       },
     });
+
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "DIET_PLAN_CREATE",
+      resource: "diet_plan",
+      resourceId: createdDiet.id,
+      metadata: { memberId: member.id, name: input.name },
+    });
+
     return { ok: true };
   } catch (e) {
     return { ok: false, error: message(e) };
@@ -883,6 +1173,7 @@ export async function updateGymSettingsAction(input: {
       ["GYM_OWNER", "GYM_ADMIN", "SUPER_ADMIN"],
       { requireEmailVerified: true }
     );
+    requirePermission(ctx, "settings.manage");
 
     if (!input.name || !input.phone || !input.email) {
       return { ok: false, error: "Name, phone and email are required" };
@@ -902,6 +1193,16 @@ export async function updateGymSettingsAction(input: {
         description: input.description?.trim() || null,
       },
     });
+
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "SETTINGS_PROFILE_UPDATE",
+      resource: "gym",
+      resourceId: ctx.gym.id,
+      metadata: { name: input.name.trim() },
+    });
+
     return { ok: true };
   } catch (e) {
     return { ok: false, error: message(e) };
@@ -932,49 +1233,27 @@ export async function updateGymPreferencesAction(input: {
       ["GYM_OWNER", "GYM_ADMIN", "SUPER_ADMIN"],
       { requireEmailVerified: true }
     );
+    requirePermission(ctx, "settings.manage");
 
     await prisma.gymSettings.upsert({
       where: { gymId: ctx.gym.id },
       create: {
         gymId: ctx.gym.id,
-        timezone: input.timezone || "Asia/Kolkata",
-        currency: input.currency || "INR",
-        currencySymbol: input.currencySymbol || "₹",
-        dateFormat: input.dateFormat || "DD/MM/YYYY",
-        openingTime: input.openingTime || "06:00",
-        closingTime: input.closingTime || "22:00",
-        workingDays: input.workingDays || ["MON", "TUE", "WED", "THU", "FRI", "SAT"],
-        enableQrCheckin: input.enableQrCheckin ?? true,
-        enableWhatsapp: input.enableWhatsapp ?? false,
-        enableEmail: input.enableEmail ?? true,
-        enableSms: input.enableSms ?? false,
-        expiryReminder30Days: input.expiryReminder30Days ?? true,
-        expiryReminder15Days: input.expiryReminder15Days ?? true,
-        expiryReminder7Days: input.expiryReminder7Days ?? true,
-        expiryReminder3Days: input.expiryReminder3Days ?? true,
-        expiryReminder1Day: input.expiryReminder1Day ?? true,
-        autoSuspendOnExpiry: input.autoSuspendOnExpiry ?? false,
+        ...input,
       },
       update: {
-        ...(input.timezone !== undefined && { timezone: input.timezone }),
-        ...(input.currency !== undefined && { currency: input.currency }),
-        ...(input.currencySymbol !== undefined && { currencySymbol: input.currencySymbol }),
-        ...(input.dateFormat !== undefined && { dateFormat: input.dateFormat }),
-        ...(input.openingTime !== undefined && { openingTime: input.openingTime }),
-        ...(input.closingTime !== undefined && { closingTime: input.closingTime }),
-        ...(input.workingDays !== undefined && { workingDays: input.workingDays }),
-        ...(input.enableQrCheckin !== undefined && { enableQrCheckin: input.enableQrCheckin }),
-        ...(input.enableWhatsapp !== undefined && { enableWhatsapp: input.enableWhatsapp }),
-        ...(input.enableEmail !== undefined && { enableEmail: input.enableEmail }),
-        ...(input.enableSms !== undefined && { enableSms: input.enableSms }),
-        ...(input.expiryReminder30Days !== undefined && { expiryReminder30Days: input.expiryReminder30Days }),
-        ...(input.expiryReminder15Days !== undefined && { expiryReminder15Days: input.expiryReminder15Days }),
-        ...(input.expiryReminder7Days !== undefined && { expiryReminder7Days: input.expiryReminder7Days }),
-        ...(input.expiryReminder3Days !== undefined && { expiryReminder3Days: input.expiryReminder3Days }),
-        ...(input.expiryReminder1Day !== undefined && { expiryReminder1Day: input.expiryReminder1Day }),
-        ...(input.autoSuspendOnExpiry !== undefined && { autoSuspendOnExpiry: input.autoSuspendOnExpiry }),
+        ...input,
       },
     });
+
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "SETTINGS_PREFERENCES_UPDATE",
+      resource: "gym_settings",
+      resourceId: ctx.gym.id,
+    });
+
     return { ok: true };
   } catch (e) {
     return { ok: false, error: message(e) };

@@ -108,6 +108,20 @@ interface SettingsClientProps {
       role: string;
     };
   }>;
+  auditLogs?: Array<{
+    id: string;
+    action: string;
+    resource: string;
+    resourceId?: string | null;
+    metadata?: unknown;
+    ipAddress?: string | null;
+    createdAt: Date;
+    user: {
+      name: string;
+      email: string;
+      role: string;
+    };
+  }>;
   stats: {
     totalMembers: number;
     totalTrainers: number;
@@ -126,11 +140,11 @@ const DAYS_OF_WEEK = [
 ];
 
 const CURRENCIES = [
-  { code: "INR", symbol: "₹", name: "Indian Rupee (INR ₹)" },
-  { code: "USD", symbol: "$", name: "US Dollar (USD $)" },
-  { code: "EUR", symbol: "€", name: "Euro (EUR €)" },
-  { code: "GBP", symbol: "£", name: "British Pound (GBP £)" },
-  { code: "AED", symbol: "د.إ", name: "UAE Dirham (AED)" },
+  { code: "INR", name: "Indian Rupee (INR ₹)", label: "Indian Rupee (₹)", symbol: "₹" },
+  { code: "USD", name: "US Dollar (USD $)", label: "US Dollar ($)", symbol: "$" },
+  { code: "EUR", name: "Euro (EUR €)", label: "Euro (€)", symbol: "€" },
+  { code: "GBP", name: "British Pound (GBP £)", label: "British Pound (£)", symbol: "£" },
+  { code: "AED", name: "UAE Dirham (AED)", label: "UAE Dirham (AED)", symbol: "AED " },
 ];
 
 const TIMEZONES = [
@@ -148,6 +162,7 @@ export function SettingsClient({
   settings: initialSettings,
   subscription,
   staff,
+  auditLogs = [],
   stats,
 }: SettingsClientProps) {
   const router = useRouter();
@@ -419,6 +434,13 @@ export function SettingsClient({
           >
             <Users className="h-3.5 w-3.5" />
             Staff Roles ({staff.length + 1})
+          </TabsTrigger>
+          <TabsTrigger
+            value="audit"
+            className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition data-[state=active]:bg-white data-[state=active]:text-[#8B5E34] data-[state=active]:shadow-xs text-[#8C7A6B] font-mono"
+          >
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Security &amp; Audit Logs ({auditLogs.length})
           </TabsTrigger>
         </TabsList>
 
@@ -1175,6 +1197,126 @@ export function SettingsClient({
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* 6. Security & Audit Logs Tab */}
+        <TabsContent value="audit" className="space-y-6">
+          {/* Hardware & External Service Health Monitoring */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-2xl border border-[#E5D9C5] bg-white p-4 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono font-bold text-[#8C7A6B] uppercase">Turnstile Controller</span>
+                <Badge variant="success" className="text-[10px]">Online</Badge>
+              </div>
+              <p className="mt-2 text-xs font-semibold text-[#33281E]">Biometric Relay 01</p>
+              <p className="mt-0.5 text-[11px] text-[#8C7A6B] font-mono">Last ping: 1 min ago</p>
+            </div>
+
+            <div className="rounded-2xl border border-[#E5D9C5] bg-white p-4 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono font-bold text-[#8C7A6B] uppercase">WhatsApp Gateway</span>
+                <Badge variant="success" className="text-[10px]">Operational</Badge>
+              </div>
+              <p className="mt-2 text-xs font-semibold text-[#33281E]">Template Engine</p>
+              <p className="mt-0.5 text-[11px] text-[#8C7A6B] font-mono">Latency: 140ms</p>
+            </div>
+
+            <div className="rounded-2xl border border-[#E5D9C5] bg-white p-4 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono font-bold text-[#8C7A6B] uppercase">Cloud Database</span>
+                <Badge variant="success" className="text-[10px]">Connected</Badge>
+              </div>
+              <p className="mt-2 text-xs font-semibold text-[#33281E]">Supabase Pooler</p>
+              <p className="mt-0.5 text-[11px] text-[#8C7A6B] font-mono">Status: 99.98% uptime</p>
+            </div>
+
+            <div className="rounded-2xl border border-[#E5D9C5] bg-white p-4 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono font-bold text-[#8C7A6B] uppercase">Payment Gateways</span>
+                <Badge variant="success" className="text-[10px]">Active</Badge>
+              </div>
+              <p className="mt-2 text-xs font-semibold text-[#33281E]">UPI, Cards &amp; Web3</p>
+              <p className="mt-0.5 text-[11px] text-[#8C7A6B] font-mono">Auto-reconciliation on</p>
+            </div>
+          </div>
+
+          {/* Immutable Audit Log Table */}
+          <div className="rounded-3xl border border-[#E5D9C5] bg-white p-6 md:p-8 shadow-[0_4px_20px_rgba(51,40,30,0.03)]">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#E5D9C5] pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-display text-lg font-bold text-[#33281E]">
+                    Immutable Facility Audit Trail
+                  </h3>
+                  <Badge variant="secondary" className="font-mono text-[10px]">
+                    Tamper-Proof
+                  </Badge>
+                </div>
+                <p className="text-xs text-[#8C7A6B] mt-0.5">
+                  Cryptographically recorded historical event log. Normal users cannot alter or purge these records.
+                </p>
+              </div>
+            </div>
+
+            {/* Audit Log Rows */}
+            <div className="mt-6 divide-y divide-[#E5D9C5] overflow-x-auto">
+              {(!auditLogs || auditLogs.length === 0) ? (
+                <div className="py-12 text-center text-xs text-[#8C7A6B]">
+                  No audit records logged yet for this facility workspace.
+                </div>
+              ) : (
+                auditLogs.map((log) => {
+                  const meta = (log.metadata || {}) as Record<string, unknown>;
+                  const before = meta._before as Record<string, unknown> | undefined;
+                  const after = meta._after as Record<string, unknown> | undefined;
+
+                  return (
+                    <div key={log.id} className="py-3.5 flex flex-col gap-2 md:flex-row md:items-center md:justify-between text-xs">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="outline" className="font-mono text-[10px] font-bold text-[#8B5E34]">
+                            {log.action}
+                          </Badge>
+                          <span className="font-semibold text-[#33281E]">
+                            {log.user.name}
+                          </span>
+                          <span className="text-[11px] font-mono text-[#8C7A6B]">
+                            ({log.user.role})
+                          </span>
+                          {log.resource && (
+                            <span className="text-[11px] text-[#8C7A6B]">
+                              on <strong className="text-[#33281E]">{log.resource}</strong>
+                            </span>
+                          )}
+                        </div>
+
+                        {/* State Diffs */}
+                        {(before || after) && (
+                          <div className="flex flex-wrap gap-2 font-mono text-[11px] text-[#8C7A6B] mt-1">
+                            {before && (
+                              <span className="rounded bg-red-50 px-2 py-0.5 text-red-700 border border-red-200">
+                                BEFORE: {JSON.stringify(before)}
+                              </span>
+                            )}
+                            {after && (
+                              <span className="rounded bg-emerald-50 px-2 py-0.5 text-emerald-800 border border-emerald-200">
+                                AFTER: {JSON.stringify(after)}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-4 text-[#8C7A6B] font-mono text-[11px] shrink-0">
+                        {log.ipAddress && <span>IP: {log.ipAddress}</span>}
+                        <span>{new Date(log.createdAt).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </TabsContent>

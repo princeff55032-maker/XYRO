@@ -9,8 +9,8 @@ import {
   Pencil,
   Trash2,
   AlertTriangle,
-  X,
-  Sparkles,
+  RotateCcw,
+  ShieldAlert,
 } from "lucide-react";
 import {
   Dialog,
@@ -31,8 +31,10 @@ import {
 import {
   recordPaymentAction,
   updatePaymentAction,
-  deletePaymentAction,
+  refundPaymentAction,
+  voidPaymentAction,
 } from "../actions";
+import { formatCurrency } from "@/lib/utils";
 
 export function RecordPaymentDialog({
   members,
@@ -91,11 +93,11 @@ export function RecordPaymentDialog({
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 text-left">
             <CreditCard className="h-4.5 w-4.5 text-[#8B5E34]" />
             Record Payment Transaction
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-left">
             Attach a membership plan tier to instantly renew or activate the athlete&apos;s validity.
           </DialogDescription>
         </DialogHeader>
@@ -160,6 +162,8 @@ export function RecordPaymentDialog({
                   <SelectItem value="CARD">Debit / Credit Card</SelectItem>
                   <SelectItem value="BANK_TRANSFER">NEFT / Bank Transfer</SelectItem>
                   <SelectItem value="ONLINE">Online Portal</SelectItem>
+                  <SelectItem value="STRIPE">Stripe Gateway</SelectItem>
+                  <SelectItem value="CRYPTO">Crypto (USDT / Web3)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -229,8 +233,11 @@ export function ModifyPaymentDialog({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  // Dialog Sub-screens
+  const [viewMode, setViewMode] = useState<"edit" | "refund" | "void">("edit");
+  const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const initialDate = payment.paidAt
@@ -254,7 +261,8 @@ export function ModifyPaymentDialog({
       paidAt: initialDate,
     });
     setError(null);
-    setShowDeleteConfirm(false);
+    setReason("");
+    setViewMode("edit");
     setOpen(true);
   };
 
@@ -282,17 +290,47 @@ export function ModifyPaymentDialog({
     router.refresh();
   };
 
-  const handleDelete = async () => {
-    setDeleteLoading(true);
+  const handleProcessRefund = async () => {
+    if (!reason.trim()) {
+      setError("Please provide a reason for the refund");
+      return;
+    }
+
+    setActionLoading(true);
     setError(null);
 
-    const res = await deletePaymentAction({
+    const res = await refundPaymentAction({
       paymentId: payment.id,
+      reason: reason.trim(),
     });
 
-    setDeleteLoading(false);
+    setActionLoading(false);
     if (!res.ok) {
-      setError(res.error || "Failed to delete payment record");
+      setError(res.error || "Failed to process refund");
+      return;
+    }
+
+    setOpen(false);
+    router.refresh();
+  };
+
+  const handleProcessVoid = async () => {
+    if (!reason.trim()) {
+      setError("Please provide a reason to void this transaction");
+      return;
+    }
+
+    setActionLoading(true);
+    setError(null);
+
+    const res = await voidPaymentAction({
+      paymentId: payment.id,
+      reason: reason.trim(),
+    });
+
+    setActionLoading(false);
+    if (!res.ok) {
+      setError(res.error || "Failed to void payment record");
       return;
     }
 
@@ -318,13 +356,17 @@ export function ModifyPaymentDialog({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 text-left">
               <CreditCard className="h-5 w-5 text-[#8B5E34]" />
-              Modify Payment Record
+              {viewMode === "refund"
+                ? "Process Payment Refund"
+                : viewMode === "void"
+                ? "Void Transaction Entry"
+                : "Modify Payment Record"}
             </DialogTitle>
-            <DialogDescription>
-              Update transaction details, payment method, settlement status, or notes for{" "}
-              <strong className="text-[#33281E]">{payment.memberName}</strong>.
+            <DialogDescription className="text-left">
+              Athlete: <strong className="text-[#33281E]">{payment.memberName}</strong> · Record ID:{" "}
+              <span className="font-mono">{payment.id.slice(-6).toUpperCase()}</span>
             </DialogDescription>
           </DialogHeader>
 
@@ -334,41 +376,108 @@ export function ModifyPaymentDialog({
             </div>
           )}
 
-          {showDeleteConfirm ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50/70 p-4 space-y-3 text-left animate-fade-up">
+          {/* Refund Flow */}
+          {viewMode === "refund" && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 space-y-3 text-left animate-fade-up">
               <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+                <RotateCcw className="h-5 w-5 text-amber-700 shrink-0 mt-0.5" />
                 <div>
-                  <h4 className="text-xs font-bold text-red-950">
-                    Void / Delete This Payment Record?
+                  <h4 className="text-xs font-bold text-amber-950">
+                    Authorize Refund of {formatCurrency(payment.amount)}?
                   </h4>
-                  <p className="text-[11px] text-red-800 leading-relaxed mt-0.5">
-                    This action will permanently delete this payment transaction record from the revenue ledger.
+                  <p className="text-[11px] text-amber-800 leading-relaxed mt-0.5">
+                    This will mark the record as REFUNDED and create an immutable audit trail entry.
                   </p>
                 </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-[10px] font-mono font-bold text-amber-900 uppercase">
+                  Refund Reason *
+                </label>
+                <input
+                  required
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="e.g. Member requested cancellation / accidental duplicate charge"
+                  className={inputCls}
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-amber-200/60">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("edit")}
+                  disabled={actionLoading}
+                  className="rounded-lg border border-[#E5D9C5] bg-white px-3 py-1.5 text-xs font-semibold text-[#33281E] hover:bg-[#F3EFEA] transition cursor-pointer"
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={handleProcessRefund}
+                  disabled={actionLoading || !reason.trim()}
+                  className="inline-flex items-center gap-1 rounded-lg bg-amber-700 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-amber-800 transition cursor-pointer disabled:opacity-50"
+                >
+                  {actionLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  <span>Confirm Refund</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Void Flow */}
+          {viewMode === "void" && (
+            <div className="rounded-2xl border border-red-200 bg-red-50/70 p-4 space-y-3 text-left animate-fade-up">
+              <div className="flex items-start gap-3">
+                <ShieldAlert className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="text-xs font-bold text-red-950">
+                    Void Transaction Record?
+                  </h4>
+                  <p className="text-[11px] text-red-800 leading-relaxed mt-0.5">
+                    To protect financial integrity, records are soft-voided rather than permanently erased.
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-[10px] font-mono font-bold text-red-900 uppercase">
+                  Void Reason *
+                </label>
+                <input
+                  required
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="e.g. Test entry / invalid transaction data"
+                  className={inputCls}
+                />
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-red-200/60">
                 <button
                   type="button"
-                  onClick={() => setShowDeleteConfirm(false)}
-                  disabled={deleteLoading}
+                  onClick={() => setViewMode("edit")}
+                  disabled={actionLoading}
                   className="rounded-lg border border-[#E5D9C5] bg-white px-3 py-1.5 text-xs font-semibold text-[#33281E] hover:bg-[#F3EFEA] transition cursor-pointer"
                 >
-                  Cancel
+                  Back
                 </button>
                 <button
                   type="button"
-                  onClick={handleDelete}
-                  disabled={deleteLoading}
+                  onClick={handleProcessVoid}
+                  disabled={actionLoading || !reason.trim()}
                   className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-red-700 transition cursor-pointer disabled:opacity-50"
                 >
-                  {deleteLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  <span>Confirm Delete</span>
+                  {actionLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  <span>Confirm Void</span>
                 </button>
               </div>
             </div>
-          ) : (
+          )}
+
+          {/* Standard Edit Flow */}
+          {viewMode === "edit" && (
             <form onSubmit={onSubmit} className="space-y-4">
               <div>
                 <label className="mb-1.5 block text-[11px] font-mono font-bold text-[#8C7A6B] uppercase tracking-wider">
@@ -414,6 +523,8 @@ export function ModifyPaymentDialog({
                       <SelectItem value="CARD">Debit / Credit Card</SelectItem>
                       <SelectItem value="BANK_TRANSFER">NEFT / Bank Transfer</SelectItem>
                       <SelectItem value="ONLINE">Online Portal</SelectItem>
+                      <SelectItem value="STRIPE">Stripe Gateway</SelectItem>
+                      <SelectItem value="CRYPTO">Crypto (USDT / Web3)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -467,14 +578,33 @@ export function ModifyPaymentDialog({
               </div>
 
               <div className="flex items-center justify-between border-t border-[#E5D9C5] pt-4 mt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700 cursor-pointer"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  <span>Void Record</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setError(null);
+                      setReason("");
+                      setViewMode("refund");
+                    }}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 hover:text-amber-800 cursor-pointer"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    <span>Refund</span>
+                  </button>
+                  <span className="text-gray-300">·</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setError(null);
+                      setReason("");
+                      setViewMode("void");
+                    }}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700 cursor-pointer"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Void</span>
+                  </button>
+                </div>
 
                 <div className="flex items-center gap-2">
                   <Button

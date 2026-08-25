@@ -2,20 +2,63 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Ban, CheckCircle2, Trash2, AlertTriangle, X } from "lucide-react";
-import { toggleMemberActiveAction, removeMemberAction } from "../actions";
+import {
+  Loader2,
+  Ban,
+  CheckCircle2,
+  Trash2,
+  AlertTriangle,
+  X,
+  CreditCard,
+  Plus,
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  toggleMemberActiveAction,
+  removeMemberAction,
+  assignPlanToMemberAction,
+} from "../actions";
+import { formatCurrency } from "@/lib/utils";
 
 interface MemberActionsProps {
   memberId: string;
   memberName: string;
   isActive: boolean;
+  plans?: { id: string; name: string; price: number; durationDays: number }[];
 }
 
-export function MemberActions({ memberId, memberName, isActive }: MemberActionsProps) {
+export function MemberActions({
+  memberId,
+  memberName,
+  isActive,
+  plans = [],
+}: MemberActionsProps) {
   const router = useRouter();
   const [toggleLoading, setToggleLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+
+  // Assign Plan Dialog state
+  const [showAssignPlan, setShowAssignPlan] = useState(false);
+  const [selectedPlanId, setSelectedPlanId] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("CASH");
+  const [notes, setNotes] = useState("");
+  const [assignLoading, setAssignLoading] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
 
   const handleToggle = async () => {
@@ -43,9 +86,55 @@ export function MemberActions({ memberId, memberName, isActive }: MemberActionsP
     }
   };
 
+  const handleAssignPlan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPlanId) {
+      setError("Please select a membership plan");
+      return;
+    }
+
+    setAssignLoading(true);
+    setError(null);
+    const res = await assignPlanToMemberAction({
+      memberId,
+      planId: selectedPlanId,
+      paymentMethod,
+      notes: notes || undefined,
+    });
+    setAssignLoading(false);
+
+    if (!res.ok) {
+      setError(res.error || "Failed to assign membership plan");
+      return;
+    }
+
+    setShowAssignPlan(false);
+    setSelectedPlanId("");
+    setNotes("");
+    router.refresh();
+  };
+
+  const chosenPlan = plans.find((p) => p.id === selectedPlanId);
+
   return (
     <>
       <div className="flex items-center justify-end gap-1.5">
+        {/* Assign / Renew Plan Button */}
+        {plans.length > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setShowAssignPlan(true);
+            }}
+            title="Assign / Renew Membership Plan"
+            className="inline-flex items-center gap-1 rounded-xl border border-[#E5D9C5] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#33281E] hover:border-[#8B5E34] hover:text-[#8B5E34] hover:bg-[#FAF9F7] transition cursor-pointer"
+          >
+            <CreditCard className="h-3 w-3 text-[#8B5E34]" />
+            <span>+ Plan</span>
+          </button>
+        )}
+
         {/* Toggle Active / Inactive */}
         <button
           type="button"
@@ -77,6 +166,117 @@ export function MemberActions({ memberId, memberName, isActive }: MemberActionsP
           <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
+
+      {/* Assign Plan Modal */}
+      <Dialog open={showAssignPlan} onOpenChange={setShowAssignPlan}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-left">
+              <CreditCard className="h-5 w-5 text-[#8B5E34]" />
+              Assign / Renew Plan
+            </DialogTitle>
+            <DialogDescription className="text-left">
+              Assign a membership plan to <strong className="text-[#33281E]">{memberName}</strong>. This will activate their pass and automatically record the transaction in the Payment Ledger.
+            </DialogDescription>
+          </DialogHeader>
+
+          {error && (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 font-medium">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleAssignPlan} className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-[11px] font-mono font-bold text-[#8C7A6B] uppercase tracking-wider">
+                Select Membership Plan *
+              </label>
+              <Select
+                value={selectedPlanId || undefined}
+                onValueChange={setSelectedPlanId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a membership plan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {plans.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name} — {formatCurrency(p.price)} ({p.durationDays} days)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-[11px] font-mono font-bold text-[#8C7A6B] uppercase tracking-wider">
+                Payment Collection Method
+              </label>
+              <Select
+                value={paymentMethod}
+                onValueChange={setPaymentMethod}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CASH">Cash</SelectItem>
+                  <SelectItem value="UPI">UPI Dynamic Link</SelectItem>
+                  <SelectItem value="CARD">Debit / Credit Card</SelectItem>
+                  <SelectItem value="BANK_TRANSFER">NEFT / Bank Transfer</SelectItem>
+                  <SelectItem value="ONLINE">Online Portal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-[11px] font-mono font-bold text-[#8C7A6B] uppercase tracking-wider">
+                Notes / Reference ID <span className="text-[#8C7A6B] font-normal">(optional)</span>
+              </label>
+              <input
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="e.g. In-person counter payment or promo code"
+                className="h-10 w-full rounded-xl border border-[#E5D9C5] bg-white px-3 text-xs text-[#33281E] placeholder:text-[#8C7A6B]/60 outline-none transition-colors focus:border-[#8B5E34] focus:ring-2 focus:ring-[#8B5E34]/15"
+              />
+            </div>
+
+            {chosenPlan && (
+              <div className="rounded-2xl border border-[#E5D9C5] bg-[#F9F8F6] p-3 text-xs flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-[#33281E]">{chosenPlan.name}</p>
+                  <p className="text-[11px] text-[#8C7A6B]">Duration: {chosenPlan.durationDays} days</p>
+                </div>
+                <div className="text-right">
+                  <span className="font-mono font-bold text-emerald-800 text-sm">
+                    {formatCurrency(chosenPlan.price)}
+                  </span>
+                  <p className="text-[10px] font-mono text-[#8C7A6B]">Auto-logged to ledger</p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 border-t border-[#E5D9C5] pt-4 mt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowAssignPlan(false)}
+                className="h-9 px-4 text-xs font-semibold text-[#8C7A6B]"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={assignLoading || !selectedPlanId}
+                className="btn-primary h-9 px-5 text-xs font-bold text-white rounded-xl cursor-pointer"
+              >
+                {assignLoading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                Assign &amp; Record Inflow
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Modal */}
       {showConfirm && (

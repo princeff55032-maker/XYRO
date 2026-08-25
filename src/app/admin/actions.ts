@@ -3,6 +3,7 @@
 import prisma from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { auth } from "@/lib/auth";
+import { logAuditEvent } from "@/lib/audit";
 import type { GymStatus, SubscriptionPlan, SubscriptionStatus, AccountStatus } from "@prisma/client";
 
 export type AdminActionResult<T = unknown> = {
@@ -36,11 +37,20 @@ export async function toggleGymStatusAction(
   newStatus: GymStatus
 ): Promise<AdminActionResult> {
   try {
-    await requireSuperAdmin();
+    const { user: admin } = await requireSuperAdmin();
 
-    await prisma.gym.update({
+    const updated = await prisma.gym.update({
       where: { id: gymId },
       data: { status: newStatus },
+    });
+
+    await logAuditEvent({
+      userId: admin.id,
+      gymId: gymId,
+      action: "GYM_STATUS_CHANGE",
+      resource: "gym",
+      resourceId: gymId,
+      metadata: { newStatus, gymName: updated.name },
     });
 
     return { ok: true };
@@ -56,7 +66,7 @@ export async function updateGymSubscriptionAction(
   price?: number
 ): Promise<AdminActionResult> {
   try {
-    await requireSuperAdmin();
+    const { user: admin } = await requireSuperAdmin();
 
     const planPrices: Record<SubscriptionPlan, number> = {
       FREE: 0,
@@ -87,9 +97,52 @@ export async function updateGymSubscriptionAction(
       },
     });
 
+    await logAuditEvent({
+      userId: admin.id,
+      gymId: gymId,
+      action: "SUBSCRIPTION_UPDATE",
+      resource: "subscription",
+      resourceId: gymId,
+      metadata: { plan, status, price: finalPrice },
+    });
+
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Failed to update subscription" };
+  }
+}
+
+export async function deleteGymAction(gymId: string): Promise<AdminActionResult> {
+  try {
+    const { user: admin } = await requireSuperAdmin();
+
+    const gym = await prisma.gym.findUnique({
+      where: { id: gymId },
+      select: { id: true, name: true },
+    });
+    if (!gym) return { ok: false, error: "Gym not found" };
+
+    // Soft delete gym
+    await prisma.gym.update({
+      where: { id: gymId },
+      data: {
+        deletedAt: new Date(),
+        status: "DEACTIVATED",
+      },
+    });
+
+    await logAuditEvent({
+      userId: admin.id,
+      gymId: gymId,
+      action: "GYM_DELETE",
+      resource: "gym",
+      resourceId: gymId,
+      metadata: { gymName: gym.name },
+    });
+
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Failed to delete gym" };
   }
 }
 
@@ -107,9 +160,17 @@ export async function toggleUserStatusAction(
       return { ok: false, error: "You cannot suspend your own account." };
     }
 
-    await prisma.user.update({
+    const updated = await prisma.user.update({
       where: { id: userId },
       data: { status: newStatus },
+    });
+
+    await logAuditEvent({
+      userId: admin.id,
+      action: "USER_STATUS_CHANGE",
+      resource: "user",
+      resourceId: userId,
+      metadata: { newStatus, userEmail: updated.email },
     });
 
     return { ok: true };
@@ -132,7 +193,7 @@ export async function forcePasswordResetAction(
     const tempPassword = `XyroTemp_${Date.now().toString(36)}!`;
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
-    await prisma.user.update({
+    const updated = await prisma.user.update({
       where: { id: userId },
       data: {
         password: hashedPassword,
@@ -140,6 +201,14 @@ export async function forcePasswordResetAction(
         loginAttempts: 0,
         lockedUntil: null,
       },
+    });
+
+    await logAuditEvent({
+      userId: admin.id,
+      action: "PASSWORD_FORCE_RESET",
+      resource: "user",
+      resourceId: userId,
+      metadata: { userEmail: updated.email },
     });
 
     return {
@@ -163,14 +232,12 @@ export async function createAnnouncementAction(input: {
   expiresInDays?: number;
 }): Promise<AdminActionResult> {
   try {
-    await requireSuperAdmin();
+    const { user: admin } = await requireSuperAdmin();
 
     if (!input.title.trim() || !input.content.trim()) {
       return { ok: false, error: "Title and content are required." };
     }
 
-    // Create a global announcement (no gymId = platform-wide)
-    // We need a gymId for the relation — broadcast to ALL gyms
     const gyms = await prisma.gym.findMany({
       where: { deletedAt: null, status: "ACTIVE" },
       select: { id: true },
@@ -192,6 +259,13 @@ export async function createAnnouncementAction(input: {
       })),
     });
 
+    await logAuditEvent({
+      userId: admin.id,
+      action: "ANNOUNCEMENT_CREATE",
+      resource: "announcement",
+      metadata: { title: input.title.trim(), gymsCount: gyms.length },
+    });
+
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Failed to create announcement" };
@@ -202,11 +276,18 @@ export async function deleteAnnouncementAction(
   announcementId: string
 ): Promise<AdminActionResult> {
   try {
-    await requireSuperAdmin();
+    const { user: admin } = await requireSuperAdmin();
 
     await prisma.announcement.update({
       where: { id: announcementId },
       data: { isActive: false },
+    });
+
+    await logAuditEvent({
+      userId: admin.id,
+      action: "ANNOUNCEMENT_DELETE",
+      resource: "announcement",
+      resourceId: announcementId,
     });
 
     return { ok: true };

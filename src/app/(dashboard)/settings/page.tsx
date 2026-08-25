@@ -10,7 +10,7 @@ export default async function SettingsPage() {
   const session = await requireTenant();
   const gymId = session.user.gymId!;
 
-  const [gym, staff, totalMembers, totalTrainers, totalPlans] =
+  const [gym, staff, totalMembers, totalTrainers, totalPlans, auditLogs] =
     await Promise.all([
       prisma.gym.findUnique({
         where: { id: gymId },
@@ -51,6 +51,20 @@ export default async function SettingsPage() {
       prisma.membershipPlan.count({
         where: { gymId, deletedAt: null },
       }),
+      prisma.auditLog.findMany({
+        where: { gymId },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+              role: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+      }),
     ]);
 
   if (!gym) {
@@ -72,6 +86,7 @@ export default async function SettingsPage() {
       settings={gym.settings}
       subscription={gym.subscription}
       staff={staff}
+      auditLogs={auditLogs}
       stats={{
         totalMembers,
         totalTrainers,
