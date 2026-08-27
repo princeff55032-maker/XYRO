@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatDate, formatCurrency, daysRemaining, getInitials } from "@/lib/utils";
 import { MemberQrPass } from "./qr-pass";
 import { MemberPaymentCheckout } from "./member-payment-checkout";
+import { MemberHealthSuite } from "./member-health-suite";
 
 export const metadata = {
   title: "Member Portal",
@@ -68,6 +69,10 @@ export default async function MemberPortalPage() {
         take: 5,
         include: { invoice: true },
       },
+      progressRecords: {
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      },
     },
   });
 
@@ -91,6 +96,7 @@ export default async function MemberPortalPage() {
 
   const currentWorkout = member.workoutPlans[0];
   const currentDiet = member.dietPlans[0];
+  const latestProgress = member.progressRecords[0];
 
   return (
     <div className="space-y-8">
@@ -184,7 +190,15 @@ export default async function MemberPortalPage() {
         </div>
       </div>
 
-      {/* 3. Workout & Diet Programs Section */}
+      {/* 3. Member Health Suite: BMI & Nutrition Calculator & Whole Day Food Record */}
+      <MemberHealthSuite
+        memberName={member.user.name}
+        memberId={member.id}
+        initialWeight={latestProgress?.weight ?? null}
+        initialHeight={latestProgress?.height ?? null}
+      />
+
+      {/* 4. Workout & Diet Programs Section */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Workout Plan Card */}
         <div className="flex flex-col rounded-3xl border border-[#E5D9C5] bg-white p-6 md:p-8 shadow-[0_4px_20px_rgba(51,40,30,0.03)]">
