@@ -42,13 +42,13 @@ export default async function MembersPage() {
       <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[#E5D9C5] pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="font-display text-2xl font-bold tracking-tight text-[#33281E]">Athlete Directory</h1>
+            <h1 className="font-display text-2xl font-bold tracking-tight text-[#33281E]">Member Directory</h1>
             <Badge variant="outline" className="font-mono text-[10px] border-[#E5D9C5] bg-white text-[#8B5E34]">
               {members.length} / {config.maxMembers === 999999 ? "∞" : config.maxMembers} ({config.badge})
             </Badge>
           </div>
           <p className="mt-0.5 text-xs text-[#8C7A6B]">
-            {members.length} registered athlete{members.length === 1 ? "" : "s"} across active and paused tiers
+            {members.length} registered member{members.length === 1 ? "" : "s"} across active and paused tiers
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -76,7 +76,7 @@ export default async function MembersPage() {
 
       {members.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-3xl border border-[#E5D9C5] bg-white py-16 text-center shadow-[0_4px_20px_rgba(51,40,30,0.03)] px-4">
-          <p className="font-display text-base font-bold text-[#33281E]">No athletes enrolled yet</p>
+          <p className="font-display text-base font-bold text-[#33281E]">No members enrolled yet</p>
           <p className="max-w-sm text-xs text-[#8C7A6B]">
             Import your existing members from Excel or enroll your first member to assign a dynamic QR pass.
           </p>
@@ -91,7 +91,7 @@ export default async function MembersPage() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-[#E5D9C5] bg-[#F9F8F6]">
-                  <th className="h-10 px-4 text-left font-mono font-bold uppercase tracking-wider text-[#8C7A6B] text-[10px]">Athlete</th>
+                  <th className="h-10 px-4 text-left font-mono font-bold uppercase tracking-wider text-[#8C7A6B] text-[10px]">Member</th>
                   <th className="h-10 px-3 text-left font-mono font-bold uppercase tracking-wider text-[#8C7A6B] text-[10px]">Member ID</th>
                   <th className="h-10 px-3 text-left font-mono font-bold uppercase tracking-wider text-[#8C7A6B] text-[10px]">Contact</th>
                   <th className="h-10 px-3 text-left font-mono font-bold uppercase tracking-wider text-[#8C7A6B] text-[10px]">Active Plan</th>

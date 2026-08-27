@@ -77,7 +77,7 @@ export function AddWorkoutDialog({ members }: { members: { id: string; label: st
             <Dumbbell className="h-4.5 w-4.5 text-[#8B5E34]" />
             Author Workout Split
           </DialogTitle>
-          <DialogDescription>Assign a structured progressive overload protocol to an athlete.</DialogDescription>
+          <DialogDescription>Assign a structured progressive overload protocol to a member.</DialogDescription>
         </DialogHeader>
         {f.error && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs text-red-700 font-mono font-medium">{f.error}</div>
@@ -85,9 +85,9 @@ export function AddWorkoutDialog({ members }: { members: { id: string; label: st
         <form onSubmit={onSubmit} className="grid gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1.5 block text-[11px] font-mono font-bold text-[#8C7A6B] uppercase tracking-wider">Athlete *</label>
+              <label className="mb-1.5 block text-[11px] font-mono font-bold text-[#8C7A6B] uppercase tracking-wider">Member *</label>
               <Select value={f.memberId || undefined} onValueChange={f.setMemberId}>
-                <SelectTrigger><SelectValue placeholder="Select athlete" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select member" /></SelectTrigger>
                 <SelectContent>
                   {members.map((m) => (
                     <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
@@ -128,7 +128,7 @@ export function AddDietDialog({ members }: { members: { id: string; label: strin
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!f.memberId) return f.setError("Select an athlete");
+    if (!f.memberId) return f.setError("Select a member");
     f.setError(null);
     f.setLoading(true);
     const res = await addDietPlanAction({
@@ -160,7 +160,7 @@ export function AddDietDialog({ members }: { members: { id: string; label: strin
             <Salad className="h-4.5 w-4.5 text-[#8B5E34]" />
             Author Nutrition Engine
           </DialogTitle>
-          <DialogDescription>Assign a calorie-targeted macronutrient meal matrix to an athlete.</DialogDescription>
+          <DialogDescription>Assign a calorie-targeted macronutrient meal matrix to a member.</DialogDescription>
         </DialogHeader>
         {f.error && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs text-red-700 font-mono font-medium">{f.error}</div>
@@ -168,9 +168,9 @@ export function AddDietDialog({ members }: { members: { id: string; label: strin
         <form onSubmit={onSubmit} className="grid gap-4">
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="sm:col-span-1">
-              <label className="mb-1.5 block text-[11px] font-mono font-bold text-[#8C7A6B] uppercase tracking-wider">Athlete *</label>
+              <label className="mb-1.5 block text-[11px] font-mono font-bold text-[#8C7A6B] uppercase tracking-wider">Member *</label>
               <Select value={f.memberId || undefined} onValueChange={f.setMemberId}>
-                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select member" /></SelectTrigger>
                 <SelectContent>
                   {members.map((m) => (
                     <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>

@@ -166,7 +166,7 @@ export default async function DashboardPage() {
           <Link href="/members">
             <Button size="sm" variant="outline" className="h-8.5 rounded-xl text-xs border-[#E5D9C5] bg-white text-[#33281E] hover:bg-[#F3EFEA]">
               <UserPlus className="h-3.5 w-3.5 text-[#8B5E34]" />
-              <span>Enroll Athlete</span>
+              <span>Enroll Member</span>
             </Button>
           </Link>
           <Link href="/payments">
@@ -193,7 +193,7 @@ export default async function DashboardPage() {
           hint={`MTD Inflow: ${formatCurrency(monthlyInflow)}`}
         />
         <StatCard
-          label="Active Athlete Roster"
+          label="Active Member Roster"
           value={activeMembers}
           icon={Users}
           hint={`+${newMembersThisMonth} new enrolled this month`}
@@ -271,12 +271,12 @@ export default async function DashboardPage() {
 
       {/* Bottom Activity Grid */}
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* Recent Athlete Registrations */}
+        {/* Recent Member Registrations */}
         <div className="rounded-3xl border border-[#E5D9C5] bg-white p-6 shadow-[0_4px_20px_rgba(51,40,30,0.03)]">
           <div className="mb-4 flex items-center justify-between border-b border-[#E5D9C5] pb-3">
             <div>
               <h3 className="font-mono text-xs font-bold uppercase tracking-widest text-[#8B5E34]">
-                Recent Athletes Enrolled
+                Recent Members Enrolled
               </h3>
               <p className="text-[11px] text-[#8C7A6B] mt-0.5">Latest registrations across this workspace</p>
             </div>

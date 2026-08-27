@@ -44,9 +44,9 @@ const capabilities = [
   },
   {
     icon: CalendarDays,
-    tag: "STUDIO TIMETABLES",
+    tag: "GROUP TIMETABLES",
     title: "Class Rosters & Capacity Capping",
-    desc: "Eliminate crowded studios. Publish scheduled HIIT, Yoga, and Spin classes with hard capacity caps, member self-booking, and automated waitlist bumps.",
+    desc: "Eliminate overcrowded workout sessions. Publish scheduled HIIT, Yoga, and Spin classes with hard capacity caps, member self-booking, and automated waitlist bumps.",
     accent: "#8B5E34",
   },
   {
@@ -71,7 +71,7 @@ export function Features() {
           <span className="text-[#8B5E34]">Nothing Generic.</span>
         </h2>
         <p className="mt-5 text-fluid-body leading-relaxed text-[#8C7A6B]">
-          Replace fragmented spreadsheets, paper logs, and manual messaging with a unified operating system built specifically for boutique health gyms, box gyms, and personal training studios.
+          Replace fragmented spreadsheets, paper logs, and manual messaging with a unified operating system built specifically for boutique health gyms, box gyms, and personal training facilities.
         </p>
       </div>
 

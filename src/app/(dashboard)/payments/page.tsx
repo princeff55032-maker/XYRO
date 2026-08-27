@@ -88,7 +88,7 @@ export default async function PaymentsPage() {
               <thead>
                 <tr className="border-b border-[#E5D9C5] bg-[#F9F8F6]">
                   <th className="h-10 px-5 text-left text-[10px] font-mono font-bold uppercase tracking-wider text-[#8C7A6B]">
-                    Athlete
+                    Member
                   </th>
                   <th className="h-10 px-4 text-left text-[10px] font-mono font-bold uppercase tracking-wider text-[#8C7A6B]">
                     Amount

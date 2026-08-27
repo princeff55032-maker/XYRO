@@ -121,7 +121,7 @@ export function ImportMembersDialog() {
 
   const handleStartImport = async () => {
     if (mappings.name === undefined || mappings.phone === undefined) {
-      setError("Please map at least 'Athlete Name' and 'Phone Number' columns.");
+      setError("Please map at least 'Member Name' and 'Phone Number' columns.");
       return;
     }
 
@@ -146,7 +146,7 @@ export function ImportMembersDialog() {
     if (!result || result.errors.length === 0) return;
     const csvContent =
       "data:text/csv;charset=utf-8," +
-      "Row,Athlete Name,Phone,Error Reason\n" +
+      "Row,Member Name,Phone,Error Reason\n" +
       result.errors.map((e) => `"${e.row}","${e.name}","${e.phone}","${e.error}"`).join("\n");
 
     const encodedUri = encodeURI(csvContent);
@@ -239,7 +239,7 @@ export function ImportMembersDialog() {
 
             <div className="grid gap-3 sm:grid-cols-2 text-xs">
               {[
-                { field: "name", label: "Athlete Name *", required: true },
+                { field: "name", label: "Member Name *", required: true },
                 { field: "phone", label: "Phone Number *", required: true },
                 { field: "email", label: "Email Address", required: false },
                 { field: "planName", label: "Membership Plan", required: false },
@@ -301,7 +301,7 @@ export function ImportMembersDialog() {
                 Preview First 5 Records
               </span>
               <Badge variant="secondary" className="font-mono text-[10px]">
-                {rawRows.length} Total Athletes
+                {rawRows.length} Total Members
               </Badge>
             </div>
 
@@ -346,7 +346,7 @@ export function ImportMembersDialog() {
                 className="btn-primary h-9.5 px-6 text-xs font-bold text-white"
               >
                 {loading && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
-                {loading ? "Importing records…" : `Confirm & Import ${rawRows.length} Athletes`}
+                {loading ? "Importing records…" : `Confirm & Import ${rawRows.length} Members`}
               </Button>
             </div>
           </div>
@@ -364,7 +364,7 @@ export function ImportMembersDialog() {
                 Migration Complete
               </h3>
               <p className="text-xs text-[#8C7A6B] mt-0.5">
-                Processed {result.total} athlete records into your active workspace.
+                Processed {result.total} member records into your active workspace.
               </p>
             </div>
 

@@ -9,7 +9,7 @@ import { Footer } from "@/components/marketing/footer";
 import { IntroOverlay } from "@/components/marketing/intro-overlay";
 
 export const metadata: Metadata = {
-  title: "XYRO — The Operating System for Boutique Health Gyms & Fitness Studios",
+  title: "XYRO — The Operating System for Modern Gyms & Fitness Centers",
   description:
     "Institutional-grade gym management platform. Unify biometric & QR turnstiles, automated WhatsApp renewal sequences, GST-compliant invoicing, and individualized strength programming in one high-performance console.",
 };

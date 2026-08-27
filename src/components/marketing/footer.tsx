@@ -9,14 +9,14 @@ const columns = [
       { label: "Turnstile Biometrics", href: "#features" },
       { label: "GST & UPI Invoicing", href: "#features" },
       { label: "Live Floor Occupancy", href: "#features" },
-      { label: "Studio Class Timetables", href: "#features" },
+      { label: "Gym Class Timetables", href: "#features" },
       { label: "7-Day Renewal Radar", href: "#features" },
     ],
   },
   {
-    title: "Studio Types",
+    title: "Facility Types",
     links: [
-      { label: "Boutique Strength Studios", href: "#pricing" },
+      { label: "Boutique Strength Gyms", href: "#pricing" },
       { label: "CrossFit & HIIT Boxes", href: "#pricing" },
       { label: "Personal Training Academies", href: "#pricing" },
       { label: "Multi-City Gym Franchises", href: "#pricing" },
@@ -41,7 +41,7 @@ export function Footer() {
           <div className="space-y-4">
             <Logo />
             <p className="max-w-xs text-xs md:text-sm leading-relaxed text-[#8C7A6B]">
-              The high-performance operating system for modern health gyms and fitness studios. Engineered with zero compromise.
+              The high-performance operating system for modern health gyms and fitness centers. Engineered with zero compromise.
             </p>
             <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-semibold text-emerald-800 font-mono">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />

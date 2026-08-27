@@ -28,7 +28,7 @@ export interface PlanConfig {
 export const PLAN_CONFIGS: Record<SubscriptionPlan, PlanConfig> = {
   FREE: {
     plan: "FREE",
-    name: "Studio Sandbox (Free)",
+    name: "Gym Sandbox (Free)",
     badge: "FREE",
     price: 0,
     maxMembers: 50,

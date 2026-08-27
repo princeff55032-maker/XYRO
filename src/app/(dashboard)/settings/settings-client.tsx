@@ -1040,7 +1040,7 @@ export function SettingsClient({
                   Active Facility Tier
                 </span>
                 <h3 className="mt-1 font-display text-2xl font-bold text-[#33281E]">
-                  {subscription ? `${subscription.plan} Tier` : "Studio Sandbox (Free Plan)"}
+                  {subscription ? `${subscription.plan} Tier` : "Gym Sandbox (Free Plan)"}
                 </h3>
               </div>
               <Badge
@@ -1053,13 +1053,13 @@ export function SettingsClient({
 
             <div className="mt-6 grid gap-4 sm:grid-cols-3">
               <div className="rounded-2xl border border-[#E5D9C5] bg-[#F9F8F6] p-4">
-                <p className="text-xs font-mono text-[#8C7A6B] uppercase font-bold text-[10px]">Athlete Quota</p>
+                <p className="text-xs font-mono text-[#8C7A6B] uppercase font-bold text-[10px]">Member Quota</p>
                 <p className="mt-1 font-display text-lg font-bold text-[#33281E]">
                   {subscription?.plan === "BUSINESS" || subscription?.plan === "PRO"
-                    ? "Unlimited Athletes"
+                    ? "Unlimited Members"
                     : subscription?.plan === "STARTER"
-                    ? "Up to 300 Athletes"
-                    : "Up to 50 Athletes (Free)"}
+                    ? "Up to 300 Members"
+                    : "Up to 50 Members (Free)"}
                 </p>
               </div>
 
@@ -1091,11 +1091,11 @@ export function SettingsClient({
                 {[
                   {
                     plan: "FREE",
-                    name: "Studio Sandbox",
+                    name: "Gym Sandbox",
                     price: "₹0",
                     period: "/forever",
                     badge: "FREE",
-                    features: ["Max 50 Athletes", "1 Coach", "Dynamic QR Passes", "Manual Cash Ledger"],
+                    features: ["Max 50 Members", "1 Coach", "Dynamic QR Passes", "Manual Cash Ledger"],
                   },
                   {
                     plan: "STARTER",
@@ -1103,7 +1103,7 @@ export function SettingsClient({
                     price: "₹1,499",
                     period: "/mo",
                     badge: "STARTER",
-                    features: ["Max 300 Athletes", "3 Coaches", "GST Invoicing", "WhatsApp Sequences", "Revenue Analytics"],
+                    features: ["Max 300 Members", "3 Coaches", "GST Invoicing", "WhatsApp Sequences", "Revenue Analytics"],
                   },
                   {
                     plan: "PRO",
@@ -1111,7 +1111,7 @@ export function SettingsClient({
                     price: "₹3,499",
                     period: "/mo",
                     badge: "PRO",
-                    features: ["Unlimited Athletes", "Unlimited Coaches", "Strength & Diet Builders", "Group Classes", "Staff RBAC"],
+                    features: ["Unlimited Members", "Unlimited Coaches", "Strength & Diet Builders", "Group Classes", "Staff RBAC"],
                   },
                   {
                     plan: "BUSINESS",

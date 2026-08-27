@@ -4,11 +4,11 @@ import { cn } from "@/lib/utils";
 
 const plans = [
   {
-    name: "Studio Sandbox",
+    name: "Gym Sandbox",
     price: "₹0",
     period: "/forever",
     badge: "BOOTSTRAP",
-    tagline: "For private trainers & emerging personal studios.",
+    tagline: "For private trainers & emerging personal gyms.",
     features: [
       "Up to 50 active athletes",
       "Digital QR passport generation",
@@ -86,7 +86,7 @@ export function Pricing() {
           <span className="text-[#8B5E34]">Zero Hidden Markups.</span>
         </h2>
         <p className="mt-5 text-fluid-body leading-relaxed text-[#8C7A6B]">
-          Scale effortlessly from a single boutique studio to a multi-city franchise. All plans include automated daily cloud backups and zero per-transaction gateway cuts.
+          Scale effortlessly from a single fitness gym to a multi-city franchise. All plans include automated daily cloud backups and zero per-transaction gateway cuts.
         </p>
       </div>
 

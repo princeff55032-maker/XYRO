@@ -24,15 +24,15 @@ export default async function ClassesPage() {
         </div>
 
         <PlanUpgradeGate
-          featureName="Studio Group Classes &amp; Timetables"
+          featureName="Group Classes &amp; Timetables"
           requiredTier="Pro"
           requiredPrice="₹3,499/mo"
-          description="Empower your facility with automated class timetables, capacity caps, athlete self-bookings, and waitlist bumps."
+          description="Empower your facility with automated class timetables, capacity caps, member self-bookings, and waitlist bumps."
           highlights={[
-            "Publish weekly HIIT, Yoga, and Spin studio timetables",
+            "Publish weekly HIIT, Yoga, and Spin gym timetables",
             "Hard capacity capping with automated waitlisting",
             "Coach & instructor assignment per session",
-            "Direct member booking from athlete mobile portal",
+            "Direct member booking from member mobile passport",
           ]}
         />
       </div>

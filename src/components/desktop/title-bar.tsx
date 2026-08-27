@@ -55,7 +55,7 @@ export function DesktopTitleBar({
           <Dumbbell className="h-3 w-3" />
         </div>
         <span className="font-display font-bold text-xs text-[#33281E] tracking-tight truncate">
-          XYRO Studio
+          XYRO Gym
         </span>
         <span className="text-[#E5D9C5] font-normal">|</span>
         <span className="truncate text-[11px] text-[#8B5E34] font-mono font-bold">
@@ -73,7 +73,7 @@ export function DesktopTitleBar({
           <input
             type="text"
             readOnly
-            placeholder="Search athletes, ledger, plans (Ctrl+K)..."
+            placeholder="Search members, ledger, plans (Ctrl+K)..."
             onClick={() => {
               const el = document.querySelector('input[type="text"]:not([readonly])') as HTMLInputElement;
               if (el) el.focus();
@@ -83,12 +83,8 @@ export function DesktopTitleBar({
         </div>
       </div>
 
-      {/* Right: Engine Status Indicator + Window Controls */}
+      {/* Right: Window Controls */}
       <div className="flex items-center gap-1">
-        <div className="hidden lg:flex items-center gap-1.5 mr-2 text-[11px] text-[#8C7A6B]">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
-          <span className="font-mono text-[10px] text-emerald-800 font-semibold">Cluster 5432 Online</span>
-        </div>
 
         {/* Windows Standard Window Action Buttons */}
         <div className="flex items-center -mr-3 h-9">

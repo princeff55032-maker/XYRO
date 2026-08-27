@@ -149,7 +149,7 @@ export function TrainerActions({
           <button
             type="button"
             onClick={openAssignModal}
-            title="Assign Athletes to this Trainer"
+            title="Assign Members to this Trainer"
             className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-[#8B5E34]/30 bg-[#FAF9F7] px-2.5 text-xs font-bold text-[#8B5E34] hover:bg-[#8B5E34] hover:text-white transition-colors cursor-pointer"
           >
             <UserPlus className="h-3.5 w-3.5" />
@@ -202,7 +202,7 @@ export function TrainerActions({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserPlus className="h-5 w-5 text-[#8B5E34]" />
-              Assign Athletes to Coach {trainerName}
+              Assign Members to Coach {trainerName}
             </DialogTitle>
             <DialogDescription>
               Select the members who should be assigned to this trainer&apos;s coaching roster.
@@ -308,7 +308,7 @@ export function TrainerActions({
           {/* Footer with Summary & Actions */}
           <div className="flex items-center justify-between border-t border-[#E5D9C5] pt-4 mt-2">
             <span className="text-xs font-semibold text-[#8C7A6B]">
-              <strong className="text-[#33281E]">{selectedMemberIds.length}</strong> athlete
+              <strong className="text-[#33281E]">{selectedMemberIds.length}</strong> member
               {selectedMemberIds.length === 1 ? "" : "s"} selected
             </span>
 
@@ -352,7 +352,7 @@ export function TrainerActions({
                 </p>
                 {memberCount > 0 && (
                   <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-[11px] text-amber-800">
-                    ⚠️ This coach currently has {memberCount} athlete{memberCount === 1 ? "" : "s"} assigned. Their assigned athletes will become unassigned.
+                    ⚠️ This coach currently has {memberCount} member{memberCount === 1 ? "" : "s"} assigned. Their assigned members will become unassigned.
                   </p>
                 )}
               </div>

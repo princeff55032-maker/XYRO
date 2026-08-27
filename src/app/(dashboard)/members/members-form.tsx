@@ -143,7 +143,7 @@ Select "Login as Gym Member" to access your Digital QR Pass, workout routines, a
       <DialogTrigger asChild>
         <Button className="h-9.5 rounded-xl btn-primary">
           <Plus className="h-4 w-4 text-white" />
-          Enroll Athlete
+          Enroll Member
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg">
@@ -155,7 +155,7 @@ Select "Login as Gym Member" to access your Digital QR Pass, workout routines, a
                 <Sparkles className="h-6 w-6" />
               </div>
               <DialogTitle className="mt-3 font-display text-xl font-bold text-[#33281E]">
-                Athlete Enrolled Successfully!
+                Member Enrolled Successfully!
               </DialogTitle>
               <DialogDescription className="mt-1 text-xs text-[#8C7A6B]">
                 Digital credentials generated. Send these credentials via WhatsApp or share them to allow portal login.
@@ -164,7 +164,7 @@ Select "Login as Gym Member" to access your Digital QR Pass, workout routines, a
 
             <div className="rounded-2xl border border-[#E5D9C5] bg-[#F9F8F6] p-4 space-y-3.5">
               <div className="flex items-center justify-between border-b border-[#E5D9C5] pb-2.5">
-                <span className="text-xs font-mono font-semibold text-[#8C7A6B]">Athlete Name</span>
+                <span className="text-xs font-mono font-semibold text-[#8C7A6B]">Member Name</span>
                 <span className="font-bold text-sm text-[#33281E]">
                   {createdCredentials.name}
                 </span>
@@ -268,7 +268,7 @@ Select "Login as Gym Member" to access your Digital QR Pass, workout routines, a
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <UserCheck className="h-5 w-5 text-[#8B5E34]" />
-                Enroll New Athlete
+                Enroll New Member
               </DialogTitle>
               <DialogDescription>
                 Creates member profile, issues a digital dynamic QR pass, and generates secure portal credentials.
@@ -387,7 +387,7 @@ Select "Login as Gym Member" to access your Digital QR Pass, workout routines, a
               </div>
               <Button type="submit" disabled={loading} className="mt-1 btn-primary h-10 rounded-xl text-white font-bold">
                 {loading && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />}
-                {loading ? "Enrolling athlete…" : "Enroll Athlete & Generate Dynamic Pass"}
+                {loading ? "Enrolling member…" : "Enroll Member & Generate Dynamic Pass"}
               </Button>
             </form>
           </>

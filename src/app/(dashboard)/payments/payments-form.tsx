@@ -111,14 +111,14 @@ export function RecordPaymentDialog({
         <form onSubmit={onSubmit} className="grid gap-4">
           <div>
             <label className="mb-1.5 block text-[11px] font-mono font-bold text-[#8C7A6B] uppercase tracking-wider">
-              Athlete *
+              Member *
             </label>
             <Select
               value={form.memberId || undefined}
               onValueChange={(v) => setForm((f) => ({ ...f, memberId: v }))}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select athlete" />
+                <SelectValue placeholder="Select member" />
               </SelectTrigger>
               <SelectContent>
                 {members.map((m) => (
@@ -365,7 +365,7 @@ export function ModifyPaymentDialog({
                 : "Modify Payment Record"}
             </DialogTitle>
             <DialogDescription className="text-left">
-              Athlete: <strong className="text-[#33281E]">{payment.memberName}</strong> · Record ID:{" "}
+              Member: <strong className="text-[#33281E]">{payment.memberName}</strong> · Record ID:{" "}
               <span className="font-mono">{payment.id.slice(-6).toUpperCase()}</span>
             </DialogDescription>
           </DialogHeader>
@@ -481,7 +481,7 @@ export function ModifyPaymentDialog({
             <form onSubmit={onSubmit} className="space-y-4">
               <div>
                 <label className="mb-1.5 block text-[11px] font-mono font-bold text-[#8C7A6B] uppercase tracking-wider">
-                  Athlete
+                  Member
                 </label>
                 <input
                   disabled
