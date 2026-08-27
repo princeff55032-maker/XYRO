@@ -61,7 +61,7 @@ export function Sidebar({
   const pathname = usePathname();
 
   return (
-    <aside className="w-56 shrink-0 flex flex-col border-r border-[#E5D9C5] bg-white select-none shadow-[2px_0_10px_rgba(51,40,30,0.02)]">
+    <aside className="hidden md:flex w-56 shrink-0 flex-col border-r border-[#E5D9C5] bg-white select-none shadow-[2px_0_10px_rgba(51,40,30,0.02)]">
       {/* Workspace Quick Tag */}
       <div className="px-3 pt-3 pb-2">
         <div className="flex items-center justify-between rounded-2xl border border-[#E5D9C5] bg-[#F9F8F6] px-3 py-2 shadow-xs">

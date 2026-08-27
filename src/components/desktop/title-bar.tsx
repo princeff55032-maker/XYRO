@@ -86,30 +86,32 @@ export function DesktopTitleBar({
       {/* Right: Window Controls */}
       <div className="flex items-center gap-1">
 
-        {/* Windows Standard Window Action Buttons */}
-        <div className="flex items-center -mr-3 h-9">
-          <button
-            onClick={handleMinimize}
-            className="flex h-9 w-11 items-center justify-center text-[#8C7A6B] transition-colors hover:bg-[#F3EFEA] hover:text-[#33281E] active:bg-[#EAE4DC] cursor-pointer"
-            title="Minimize"
-          >
-            <Minus className="h-3.5 w-3.5" />
-          </button>
-          <button
-            onClick={handleMaximize}
-            className="flex h-9 w-11 items-center justify-center text-[#8C7A6B] transition-colors hover:bg-[#F3EFEA] hover:text-[#33281E] active:bg-[#EAE4DC] cursor-pointer"
-            title={isMaximized ? "Restore Down" : "Maximize"}
-          >
-            <Square className="h-3 w-3" />
-          </button>
-          <button
-            onClick={handleClose}
-            className="flex h-9 w-11 items-center justify-center text-[#8C7A6B] transition-colors hover:bg-red-500 hover:text-white active:bg-red-600 cursor-pointer"
-            title="Close"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
+        {/* Windows Standard Window Action Buttons (Electron only) */}
+        {isElectron && (
+          <div className="flex items-center -mr-3 h-9">
+            <button
+              onClick={handleMinimize}
+              className="flex h-9 w-11 items-center justify-center text-[#8C7A6B] transition-colors hover:bg-[#F3EFEA] hover:text-[#33281E] active:bg-[#EAE4DC] cursor-pointer"
+              title="Minimize"
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={handleMaximize}
+              className="flex h-9 w-11 items-center justify-center text-[#8C7A6B] transition-colors hover:bg-[#F3EFEA] hover:text-[#33281E] active:bg-[#EAE4DC] cursor-pointer"
+              title={isMaximized ? "Restore Down" : "Maximize"}
+            >
+              <Square className="h-3 w-3" />
+            </button>
+            <button
+              onClick={handleClose}
+              className="flex h-9 w-11 items-center justify-center text-[#8C7A6B] transition-colors hover:bg-red-500 hover:text-white active:bg-red-600 cursor-pointer"
+              title="Close"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );
