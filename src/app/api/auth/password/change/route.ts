@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { auth } from "@/lib/auth";
+import { passwordSchema } from "@/lib/validations";
 
 export async function POST(req: Request) {
   // 1. Enforce server-side session authentication
@@ -23,9 +24,10 @@ export async function POST(req: Request) {
     );
   }
 
-  if (typeof newPassword !== "string" || newPassword.length < 8) {
+  const parsedPassword = passwordSchema.safeParse(newPassword);
+  if (!parsedPassword.success) {
     return NextResponse.json(
-      { ok: false, error: "New password must be at least 8 characters long" },
+      { ok: false, error: parsedPassword.error.issues[0]?.message || "New password does not meet complexity requirements" },
       { status: 400 }
     );
   }

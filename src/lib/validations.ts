@@ -17,6 +17,8 @@ export const strongPasswordSchema = z
   .regex(/[0-9]/, "Password must contain at least one number (0-9)")
   .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character (!@#$%^&*)");
 
+export const passwordSchema = strongPasswordSchema;
+
 export const gymRegistrationSchema = z
   .object({
     gymName: z.string().min(2, "Gym name must be at least 2 characters").max(100),

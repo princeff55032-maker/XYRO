@@ -37,12 +37,44 @@ async function run() {
   `);
   console.log("✓ Checked/Created progress_records table");
 
-  // 3. Create index if not exists
-  await pool.query(`CREATE INDEX IF NOT EXISTS "progress_records_memberId_date_idx" ON "progress_records"("memberId", "date");`);
-  console.log("✓ Created progress_records index");
+  // 4. Ensure access_devices table exists
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS "access_devices" (
+      "id" TEXT NOT NULL,
+      "gymId" TEXT NOT NULL,
+      "name" TEXT NOT NULL,
+      "apiKeyHash" TEXT NOT NULL,
+      "keyPrefix" TEXT NOT NULL,
+      "isActive" BOOLEAN NOT NULL DEFAULT true,
+      "lastUsedAt" TIMESTAMP(3),
+      "revokedAt" TIMESTAMP(3),
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL,
+      CONSTRAINT "access_devices_pkey" PRIMARY KEY ("id"),
+      CONSTRAINT "access_devices_apiKeyHash_key" UNIQUE ("apiKeyHash"),
+      CONSTRAINT "access_devices_gymId_fkey" FOREIGN KEY ("gymId") REFERENCES "gyms"("id") ON DELETE CASCADE ON UPDATE CASCADE
+    );
+  `);
+  console.log("✓ Checked/Created access_devices table");
 
-  const res = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'members';`);
-  console.log("Members columns:", res.rows.map((r: any) => r.column_name));
+  // 5. Ensure rate_limit_records table exists
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS "rate_limit_records" (
+      "id" TEXT NOT NULL,
+      "key" TEXT NOT NULL,
+      "count" INTEGER NOT NULL DEFAULT 1,
+      "expiresAt" TIMESTAMP(3) NOT NULL,
+      CONSTRAINT "rate_limit_records_pkey" PRIMARY KEY ("id"),
+      CONSTRAINT "rate_limit_records_key_key" UNIQUE ("key")
+    );
+  `);
+  console.log("✓ Checked/Created rate_limit_records table");
+
+  // 6. Create indexes
+  await pool.query(`CREATE INDEX IF NOT EXISTS "access_devices_gymId_idx" ON "access_devices"("gymId");`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS "access_devices_apiKeyHash_idx" ON "access_devices"("apiKeyHash");`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS "rate_limit_records_key_idx" ON "rate_limit_records"("key");`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS "rate_limit_records_expiresAt_idx" ON "rate_limit_records"("expiresAt");`);
 
   await pool.end();
   console.log("Migration complete!");

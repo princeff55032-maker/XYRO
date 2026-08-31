@@ -15,7 +15,7 @@ export async function createDeviceApiKey(params: {
   gymId: string;
   name: string;
 }): Promise<{ apiKey: string; keyPrefix: string; device: AccessDevice }> {
-  const randomSecret = crypto.randomBytes(24).toString("hex");
+  const randomSecret = crypto.randomBytes(32).toString("hex");
   const apiKey = `xyro_dev_${randomSecret}`;
   const keyPrefix = apiKey.slice(0, 16);
   const apiKeyHash = hashDeviceApiKey(apiKey);
@@ -27,6 +27,32 @@ export async function createDeviceApiKey(params: {
       apiKeyHash,
       keyPrefix,
       isActive: true,
+    },
+  });
+
+  return { apiKey, keyPrefix, device };
+}
+
+/**
+ * Rotates an existing device API key with a fresh high-entropy key.
+ * Invalidates the previous key immediately.
+ */
+export async function rotateDeviceApiKey(params: {
+  deviceId: string;
+  gymId: string;
+}): Promise<{ apiKey: string; keyPrefix: string; device: AccessDevice }> {
+  const randomSecret = crypto.randomBytes(32).toString("hex");
+  const apiKey = `xyro_dev_${randomSecret}`;
+  const keyPrefix = apiKey.slice(0, 16);
+  const apiKeyHash = hashDeviceApiKey(apiKey);
+
+  const device = await prisma.accessDevice.update({
+    where: { id: params.deviceId, gymId: params.gymId },
+    data: {
+      apiKeyHash,
+      keyPrefix,
+      isActive: true,
+      revokedAt: null,
     },
   });
 

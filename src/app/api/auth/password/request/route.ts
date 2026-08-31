@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 import prisma from "@/lib/db";
-import { v4 as uuidv4 } from "uuid";
 import { getClientIp, checkRateLimit } from "@/lib/ratelimit";
 
 export async function POST(req: Request) {
@@ -35,19 +35,33 @@ export async function POST(req: Request) {
   }
 
   const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
-  if (!user) return NextResponse.json({ ok: true }); // don't reveal existence
+  // Constant-time generic response prevents account enumeration
+  if (!user || user.deletedAt || user.status === "DEACTIVATED" || user.status === "SUSPENDED") {
+    return NextResponse.json({
+      ok: true,
+      message: "If an account with that email exists, a password reset link has been dispatched.",
+    });
+  }
 
-  const token = uuidv4();
-  const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+  // 1. Generate 32-byte cryptographically secure random token
+  const rawToken = crypto.randomBytes(32).toString("hex");
+
+  // 2. Compute SHA-256 hash for database storage (raw token is never stored in DB)
+  const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+
+  // 3. 15-minute expiration window
+  const expires = new Date(Date.now() + 15 * 60 * 1000);
 
   await prisma.user.update({
     where: { id: user.id },
-    data: { resetToken: token, resetTokenExpires: expires },
+    data: { resetToken: hashedToken, resetTokenExpires: expires },
   });
 
-  // In dev we log the link; in production you'd send email.
-  const link = `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/change-password?token=${token}`;
+  const link = `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/change-password?token=${rawToken}`;
   console.log(`[password] reset link for ${normalizedEmail}: ${link}`);
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    ok: true,
+    message: "If an account with that email exists, a password reset link has been dispatched.",
+  });
 }

@@ -19,7 +19,7 @@ import {
   assertPlanFeature,
   getGymSubscription,
 } from "@/lib/subscriptions";
-import { createDeviceApiKey } from "@/lib/device-auth";
+import { createDeviceApiKey, rotateDeviceApiKey } from "@/lib/device-auth";
 
 export type ActionResult<T = unknown> = {
   ok: boolean;
@@ -1923,6 +1923,59 @@ export async function revokeAccessDeviceAction(deviceId: string): Promise<Action
     });
 
     return { ok: true };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
+}
+
+export async function rotateAccessDeviceAction(
+  deviceId: string
+): Promise<ActionResult<{ apiKey: string; keyPrefix: string; device: AccessDeviceResult }>> {
+  try {
+    const ctx = await requireWorkspaceAuth(
+      ["GYM_OWNER", "GYM_ADMIN", "SUPER_ADMIN"],
+      { requireEmailVerified: true }
+    );
+    requirePermission(ctx, "access_control.manage");
+
+    const existing = await prisma.accessDevice.findFirst({
+      where: { id: deviceId, gymId: ctx.gym.id },
+    });
+
+    if (!existing) {
+      return { ok: false, error: "Access device not found in this workspace." };
+    }
+
+    const { apiKey, keyPrefix, device } = await rotateDeviceApiKey({
+      deviceId: existing.id,
+      gymId: ctx.gym.id,
+    });
+
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "ACCESS_DEVICE_ROTATE",
+      resource: "access_device",
+      resourceId: device.id,
+      metadata: { name: device.name, keyPrefix },
+    });
+
+    return {
+      ok: true,
+      data: {
+        apiKey,
+        keyPrefix,
+        device: {
+          id: device.id,
+          name: device.name,
+          keyPrefix: device.keyPrefix,
+          isActive: device.isActive,
+          lastUsedAt: device.lastUsedAt ? device.lastUsedAt.toISOString() : null,
+          revokedAt: device.revokedAt ? device.revokedAt.toISOString() : null,
+          createdAt: device.createdAt.toISOString(),
+        },
+      },
+    };
   } catch (e) {
     return { ok: false, error: message(e) };
   }

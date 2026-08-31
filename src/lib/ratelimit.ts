@@ -69,53 +69,50 @@ export async function checkRateLimit(
   const expiresAt = new Date(now + windowMs);
 
   try {
-    // 1. Database-backed distributed atomic rate limit
-    const existing = await prisma.rateLimitRecord.findUnique({
-      where: { key: identifier },
-    });
+    // 1. Database-backed single-statement atomic rate limiting (Race-Condition Free)
+    const result: Array<{ count: number; expiresAt: Date }> = await prisma.$queryRaw`
+      INSERT INTO "rate_limit_records" ("key", "count", "expiresAt")
+      VALUES (${identifier}, 1, ${expiresAt})
+      ON CONFLICT ("key") DO UPDATE
+      SET 
+        "count" = CASE 
+          WHEN "rate_limit_records"."expiresAt" < NOW() THEN 1 
+          ELSE "rate_limit_records"."count" + 1 
+        END,
+        "expiresAt" = CASE 
+          WHEN "rate_limit_records"."expiresAt" < NOW() THEN ${expiresAt} 
+          ELSE "rate_limit_records"."expiresAt" 
+        END
+      RETURNING "count", "expiresAt";
+    `;
 
-    if (!existing || existing.expiresAt.getTime() < now) {
-      // Create or reset bucket
-      await prisma.rateLimitRecord.upsert({
-        where: { key: identifier },
-        create: { key: identifier, count: 1, expiresAt },
-        update: { count: 1, expiresAt },
-      });
+    if (result && result.length > 0) {
+      const currentRecord = result[0];
+      const count = currentRecord.count;
+      const recordExpiresAt = new Date(currentRecord.expiresAt).getTime();
+
+      if (count > limit) {
+        const retryAfter = Math.max(1, Math.ceil((recordExpiresAt - now) / 1000));
+        return {
+          success: false,
+          limit,
+          remaining: 0,
+          reset: Math.ceil(recordExpiresAt / 1000),
+          retryAfterSeconds: retryAfter,
+        };
+      }
 
       return {
         success: true,
         limit,
-        remaining: limit - 1,
-        reset: Math.ceil(expiresAt.getTime() / 1000),
+        remaining: Math.max(0, limit - count),
+        reset: Math.ceil(recordExpiresAt / 1000),
         retryAfterSeconds: 0,
       };
     }
-
-    if (existing.count >= limit) {
-      const retryAfter = Math.max(1, Math.ceil((existing.expiresAt.getTime() - now) / 1000));
-      return {
-        success: false,
-        limit,
-        remaining: 0,
-        reset: Math.ceil(existing.expiresAt.getTime() / 1000),
-        retryAfterSeconds: retryAfter,
-      };
-    }
-
-    // Increment bucket
-    const updated = await prisma.rateLimitRecord.update({
-      where: { key: identifier },
-      data: { count: { increment: 1 } },
-    });
-
-    return {
-      success: true,
-      limit,
-      remaining: Math.max(0, limit - updated.count),
-      reset: Math.ceil(existing.expiresAt.getTime() / 1000),
-      retryAfterSeconds: 0,
-    };
-  } catch {
+  } catch (err) {
+    console.warn("[RateLimit DB Error - Fallback to in-memory]:", err);
+  }
     // 2. In-Memory fallback if database connection is busy/offline
     const current = inMemoryStore.get(identifier);
 
@@ -150,7 +147,6 @@ export async function checkRateLimit(
       retryAfterSeconds: 0,
     };
   }
-}
 
 /**
  * Resets rate limit for a specific identifier (e.g. after successful authentication)

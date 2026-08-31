@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 import prisma from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { getClientIp, checkRateLimit } from "@/lib/ratelimit";
+import { passwordSchema } from "@/lib/validations";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
@@ -33,15 +35,25 @@ export async function POST(req: Request) {
     );
   }
 
-  const user = await prisma.user.findFirst({ where: { resetToken: token } });
+  // 1. Compute SHA-256 hash of incoming token for database lookup
+  const cleanToken = typeof token === "string" ? token.trim() : "";
+  const hashedToken = crypto.createHash("sha256").update(cleanToken).digest("hex");
+
+  const user = await prisma.user.findFirst({
+    where: { resetToken: hashedToken },
+  });
+
   if (!user || !user.resetTokenExpires || user.resetTokenExpires < new Date()) {
     return NextResponse.json({ ok: false, error: "Reset token is invalid or has expired" }, { status: 400 });
   }
 
-  if (typeof password !== "string" || password.length < 8) {
-    return NextResponse.json({ ok: false, error: "Password must be at least 8 characters long" }, { status: 400 });
+  // 2. Enforce production password complexity policy
+  const parsedPassword = passwordSchema.safeParse(password);
+  if (!parsedPassword.success) {
+    return NextResponse.json({ ok: false, error: parsedPassword.error.issues[0]?.message || "Password does not meet complexity requirements" }, { status: 400 });
   }
 
+  // 3. Hash new password and invalidate reset token immediately (single-use lifecycle)
   const hashed = await bcrypt.hash(password, 10);
   await prisma.user.update({
     where: { id: user.id },

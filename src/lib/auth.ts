@@ -110,6 +110,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           throw new Error("Your account has been deactivated");
         }
 
+        if (user.status === "PENDING_VERIFICATION") {
+          throw new Error("Please verify your email address to activate your account.");
+        }
+
         // Enforce Portal Role Boundary
         if (portalRole === "GYM") {
           if (user.role === "CUSTOMER") {
@@ -169,7 +173,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             loginAttempts: 0,
             lockedUntil: null,
             lastLoginAt: new Date(),
-            status: user.status === "PENDING_VERIFICATION" ? "ACTIVE" : user.status,
           },
         });
 
