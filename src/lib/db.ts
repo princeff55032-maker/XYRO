@@ -1,25 +1,27 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
+  pool: Pool | undefined;
 };
 
-function getCleanDatabaseUrl(): string {
-  let url = process.env.DATABASE_URL || "";
-  if (url.includes(".pooler.supabase.com")) {
-    url = url
-      .replace(":6543", ":5432")
-      .replace("?pgbouncer=true&", "?")
-      .replace("?pgbouncer=true", "")
-      .replace("&pgbouncer=true", "");
-  }
-  return url;
-}
-
 function createPrismaClient() {
-  const connectionString = getCleanDatabaseUrl();
-  const adapter = new PrismaPg({ connectionString });
+  const connectionString = process.env.DATABASE_URL;
+
+  const pool =
+    globalForPrisma.pool ??
+    new Pool({
+      connectionString,
+      max: process.env.NODE_ENV === "production" ? 4 : 10,
+      idleTimeoutMillis: 10000,
+      connectionTimeoutMillis: 10000,
+    });
+
+  if (process.env.NODE_ENV !== "production") globalForPrisma.pool = pool;
+
+  const adapter = new PrismaPg(pool);
   return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
