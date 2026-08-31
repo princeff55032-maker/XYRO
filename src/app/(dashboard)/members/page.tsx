@@ -3,6 +3,7 @@ import prisma from "@/lib/db";
 import { getGymSubscription } from "@/lib/subscriptions";
 import { formatDate, daysRemaining, getInitials } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Clock } from "lucide-react";
 import { AddMemberDialog } from "./members-form";
 import { MemberActions } from "./member-actions";
 import { ExportMembersButton } from "./export-members-button";
@@ -21,8 +22,7 @@ export default async function MembersPage() {
       include: {
         user: { select: { name: true, email: true, phone: true } },
         memberships: {
-          where: { status: "ACTIVE" },
-          include: { plan: { select: { name: true } } },
+          include: { plan: { select: { id: true, name: true, price: true, durationDays: true } } },
           orderBy: { endDate: "desc" },
           take: 1,
         },
@@ -114,7 +114,15 @@ export default async function MembersPage() {
                           </div>
                           <div>
                             <p className="font-bold text-[#33281E]">{m.user.name}</p>
-                            <p className="font-mono text-[10px] text-[#8C7A6B]">Joined {formatDate(m.joinDate)}</p>
+                            <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                              <span className="font-mono text-[10px] text-[#8C7A6B]">Joined {formatDate(m.joinDate)}</span>
+                              {m.timeSlot && (
+                                <span className="inline-flex items-center gap-1 rounded-md border border-[#E5D9C5] bg-[#F9F8F6] px-1.5 py-0.5 text-[9px] font-semibold text-[#8B5E34]">
+                                  <Clock className="h-2.5 w-2.5" />
+                                  {m.timeSlot}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -156,7 +164,27 @@ export default async function MembersPage() {
                         <MemberActions
                           memberId={m.id}
                           memberName={m.user.name}
+                          memberEmail={m.user.email}
+                          memberPhone={m.user.phone || ""}
+                          memberGender={m.gender}
+                          timeSlot={m.timeSlot}
+                          address={m.address}
+                          notes={m.notes}
                           isActive={m.isActive}
+                          activeMembership={
+                            active
+                              ? {
+                                  id: active.id,
+                                  planId: active.planId,
+                                  planName: active.plan.name,
+                                  status: active.status,
+                                  startDate: active.startDate,
+                                  endDate: active.endDate,
+                                  daysRemaining: days,
+                                  autoRenew: active.autoRenew,
+                                }
+                              : null
+                          }
                           plans={plans}
                         />
                       </td>

@@ -282,6 +282,7 @@ model Member {
   profileImage     String?
   dateOfBirth      DateTime?
   gender           Gender?
+  timeSlot         String?
   address          String?
   emergencyContact String?
   emergencyPhone   String?
@@ -631,6 +632,8 @@ model ProgressRecord {
   arms         Float?   // cm
   thighs       Float?   // cm
   bmi          Float?
+  calories     Int?
+  waterLiters  Float?
   progressPhoto String?
   notes        String?  @db.Text
   createdAt    DateTime @default(now())
@@ -957,5 +960,7 @@ model RateLimitRecord {
   @@index([expiresAt])
   @@map("rate_limit_records")
 }
+
+
 
 

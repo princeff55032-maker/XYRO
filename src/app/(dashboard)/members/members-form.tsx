@@ -33,11 +33,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { addMemberAction, type MemberCredentials } from "../actions";
+import { formatCurrency } from "@/lib/utils";
 
 export function AddMemberDialog({
   plans,
 }: {
-  plans: { id: string; name: string }[];
+  plans: { id: string; name: string; price?: number; durationDays?: number }[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -54,8 +55,12 @@ export function AddMemberDialog({
     phone: "",
     gender: "",
     dateOfBirth: "",
+    timeSlot: "",
+    customTimeSlot: "",
     address: "",
     planId: "",
+    discountType: "NONE" as "NONE" | "FIXED" | "PERCENTAGE",
+    discountValue: "",
   });
 
   function set<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
@@ -66,14 +71,23 @@ export function AddMemberDialog({
     e.preventDefault();
     setError(null);
     setLoading(true);
+
+    const resolvedTimeSlot =
+      form.timeSlot === "CUSTOM"
+        ? form.customTimeSlot.trim() || undefined
+        : form.timeSlot || undefined;
+
     const res = await addMemberAction({
       name: form.name,
       email: form.email,
       phone: form.phone,
       gender: form.gender || undefined,
       dateOfBirth: form.dateOfBirth || undefined,
+      timeSlot: resolvedTimeSlot,
       address: form.address || undefined,
       planId: form.planId || undefined,
+      discountType: form.discountType !== "NONE" ? form.discountType : undefined,
+      discountValue: form.discountValue ? parseFloat(form.discountValue) : undefined,
     });
     setLoading(false);
     if (!res.ok || !res.data) {
@@ -88,11 +102,17 @@ export function AddMemberDialog({
       phone: "",
       gender: "",
       dateOfBirth: "",
+      timeSlot: "",
+      customTimeSlot: "",
       address: "",
       planId: "",
+      discountType: "NONE",
+      discountValue: "",
     });
     router.refresh();
   }
+
+  const selectedPlan = plans.find((p) => p.id === form.planId);
 
   const copyToClipboard = (text: string, fieldName: string) => {
     navigator.clipboard.writeText(text);
@@ -352,6 +372,37 @@ Select "Login as Gym Member" to access your Digital QR Pass, workout routines, a
                 </div>
                 <div className="sm:col-span-2">
                   <label className="mb-1.5 block text-[11px] font-mono font-bold text-[#8C7A6B] uppercase tracking-wider">
+                    Preferred Time Slot
+                  </label>
+                  <Select
+                    value={form.timeSlot || undefined}
+                    onValueChange={(v) => set("timeSlot", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Preferred Time Slot (Optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Morning (06:00 AM - 09:00 AM)">🌅 Morning (06:00 AM - 09:00 AM)</SelectItem>
+                      <SelectItem value="Midday (09:00 AM - 12:00 PM)">☀️ Midday (09:00 AM - 12:00 PM)</SelectItem>
+                      <SelectItem value="Afternoon (12:00 PM - 04:00 PM)">🌤️ Afternoon (12:00 PM - 04:00 PM)</SelectItem>
+                      <SelectItem value="Evening (04:00 PM - 08:00 PM)">🌆 Evening (04:00 PM - 08:00 PM)</SelectItem>
+                      <SelectItem value="Night (08:00 PM - 10:00 PM)">🌙 Night (08:00 PM - 10:00 PM)</SelectItem>
+                      <SelectItem value="All Day / Flexible">⚡ All Day / Flexible Access</SelectItem>
+                      <SelectItem value="CUSTOM">✏️ Custom Time Slot...</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {form.timeSlot === "CUSTOM" && (
+                    <input
+                      value={form.customTimeSlot}
+                      onChange={(e) => set("customTimeSlot", e.target.value)}
+                      placeholder="e.g. 05:30 AM - 07:00 AM"
+                      className={`mt-2 ${inputCls}`}
+                    />
+                  )}
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="mb-1.5 block text-[11px] font-mono font-bold text-[#8C7A6B] uppercase tracking-wider">
                     Address
                   </label>
                   <input
@@ -378,11 +429,73 @@ Select "Login as Gym Member" to access your Digital QR Pass, workout routines, a
                     <SelectContent>
                       {plans.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
-                          {p.name}
+                          {p.name} {p.price !== undefined ? `— ${formatCurrency(p.price)}` : ""} {p.durationDays ? `(${p.durationDays} days)` : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+
+                  {/* Optional Discount Selector */}
+                  {selectedPlan && selectedPlan.price !== undefined && (
+                    <div className="mt-3 rounded-2xl border border-[#E5D9C5] bg-[#FAF9F7] p-3 space-y-2.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-semibold text-[#33281E]">Plan Base Price:</span>
+                        <span className="font-mono font-bold text-[#8B5E34]">{formatCurrency(selectedPlan.price)}</span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] font-mono font-bold uppercase text-[#8C7A6B]">Discount Mode</label>
+                          <Select
+                            value={form.discountType}
+                            onValueChange={(v) => set("discountType", v as "NONE" | "FIXED" | "PERCENTAGE")}
+                          >
+                            <SelectTrigger className="h-8 text-xs bg-white">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="NONE">No Discount</SelectItem>
+                              <SelectItem value="FIXED">Flat (₹ Amount)</SelectItem>
+                              <SelectItem value="PERCENTAGE">Percentage (%)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {form.discountType !== "NONE" && (
+                          <div>
+                            <label className="text-[10px] font-mono font-bold uppercase text-[#8C7A6B]">
+                              {form.discountType === "PERCENTAGE" ? "Discount (%)" : "Discount (₹)"}
+                            </label>
+                            <input
+                              type="number"
+                              step="any"
+                              value={form.discountValue}
+                              onChange={(e) => set("discountValue", e.target.value)}
+                              placeholder={form.discountType === "PERCENTAGE" ? "e.g. 10" : "e.g. 500"}
+                              className="h-8 w-full rounded-xl border border-[#E5D9C5] bg-white px-2.5 text-xs text-[#33281E] outline-none"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {form.discountType !== "NONE" && form.discountValue && (
+                        <div className="flex items-center justify-between border-t border-[#E5D9C5] pt-2 text-xs font-mono">
+                          <span className="text-[#8C7A6B]">Net Payable Amount:</span>
+                          <span className="font-bold text-emerald-800 text-sm">
+                            {formatCurrency(
+                              Math.max(
+                                0,
+                                selectedPlan.price -
+                                  (form.discountType === "PERCENTAGE"
+                                    ? (selectedPlan.price * Math.min(100, Math.max(0, parseFloat(form.discountValue) || 0))) / 100
+                                    : Math.min(selectedPlan.price, Math.max(0, parseFloat(form.discountValue) || 0)))
+                              )
+                            )}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               <Button type="submit" disabled={loading} className="mt-1 btn-primary h-10 rounded-xl text-white font-bold">

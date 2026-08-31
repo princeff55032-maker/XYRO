@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatDate, formatCurrency, daysRemaining, getInitials } from "@/lib/utils";
 import { MemberQrPass } from "./qr-pass";
 import { MemberPaymentCheckout } from "./member-payment-checkout";
+import { DailyProgressTracker } from "./daily-progress-tracker";
 
 export const metadata = {
   title: "Member Portal",
@@ -50,6 +51,10 @@ export default async function MemberPortalPage() {
       attendance: {
         orderBy: { date: "desc" },
         take: 10,
+      },
+      progressRecords: {
+        orderBy: { date: "desc" },
+        take: 30,
       },
       workoutPlans: {
         where: { isActive: true },
@@ -101,6 +106,7 @@ export default async function MemberPortalPage() {
         gymName={member.gym.name}
         gymCode={member.gym.gymCode}
         planName={activeMembership?.plan.name}
+        timeSlot={member.timeSlot}
         isValid={isPassValid}
       />
 
@@ -169,22 +175,25 @@ export default async function MemberPortalPage() {
         <div className="rounded-3xl border border-[#E5D9C5] bg-white p-5 shadow-[0_4px_20px_rgba(51,40,30,0.03)]">
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#8C7A6B]">
-              Assigned Coach
+              Coach &amp; Time Slot
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-50 text-sky-800">
               <UserCheck className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-3 font-display text-lg font-bold text-[#33281E] truncate">
+          <p className="mt-3 font-display text-base font-bold text-[#33281E] truncate">
             {member.assignedTrainer ? member.assignedTrainer.user.name : "Gym Floor Trainer"}
           </p>
-          <p className="mt-1 text-xs text-[#8C7A6B] truncate">
-            {member.assignedTrainer?.specialization || "General Fitness & Conditioning"}
+          <p className="mt-1 text-xs text-[#8B5E34] font-medium truncate">
+            {member.timeSlot ? `⏰ ${member.timeSlot}` : "⏰ All Day / Flexible"}
           </p>
         </div>
       </div>
 
-      {/* 3. Workout & Diet Programs Section */}
+      {/* 3. Daily Progress & Body Metrics Tracker */}
+      <DailyProgressTracker records={member.progressRecords} />
+
+      {/* 4. Workout & Diet Programs Section */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Workout Plan Card */}
         <div className="flex flex-col rounded-3xl border border-[#E5D9C5] bg-white p-6 md:p-8 shadow-[0_4px_20px_rgba(51,40,30,0.03)]">

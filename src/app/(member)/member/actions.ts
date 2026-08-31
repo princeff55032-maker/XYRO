@@ -225,3 +225,108 @@ export async function renewMemberPlanOnlineAction(params?: {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/* Daily Member Progress & Health Tracker                             */
+/* ------------------------------------------------------------------ */
+
+export type LogProgressInput = {
+  weight?: number;
+  height?: number;
+  bodyFat?: number;
+  chest?: number;
+  waist?: number;
+  arms?: number;
+  thighs?: number;
+  calories?: number;
+  waterLiters?: number;
+  notes?: string;
+};
+
+export async function logMemberDailyProgressAction(
+  input: LogProgressInput
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { ok: false, error: "Unauthorized: Active member session required." };
+    }
+
+    const member = await prisma.member.findUnique({
+      where: { userId: session.user.id },
+      select: { id: true, gymId: true, isActive: true, deletedAt: true },
+    });
+
+    if (!member || member.deletedAt || !member.isActive) {
+      return { ok: false, error: "Active member account not found." };
+    }
+
+    // Calculate BMI if height and weight are provided
+    let bmi: number | undefined = undefined;
+    if (input.weight && input.height && input.height > 0) {
+      const heightInMeters = input.height / 100;
+      bmi = parseFloat((input.weight / (heightInMeters * heightInMeters)).toFixed(1));
+    }
+
+    await prisma.progressRecord.create({
+      data: {
+        memberId: member.id,
+        date: new Date(),
+        weight: input.weight ? Number(input.weight) : null,
+        height: input.height ? Number(input.height) : null,
+        bodyFat: input.bodyFat ? Number(input.bodyFat) : null,
+        chest: input.chest ? Number(input.chest) : null,
+        waist: input.waist ? Number(input.waist) : null,
+        arms: input.arms ? Number(input.arms) : null,
+        thighs: input.thighs ? Number(input.thighs) : null,
+        calories: input.calories ? Number(input.calories) : null,
+        waterLiters: input.waterLiters ? Number(input.waterLiters) : null,
+        bmi: bmi || null,
+        notes: input.notes?.trim() || null,
+      },
+    });
+
+    return { ok: true };
+  } catch (error) {
+    console.error("Failed to log daily progress:", error);
+    return { ok: false, error: "Failed to record daily progress." };
+  }
+}
+
+export async function deleteMemberProgressRecordAction(
+  recordId: string
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { ok: false, error: "Unauthorized: Active member session required." };
+    }
+
+    const member = await prisma.member.findUnique({
+      where: { userId: session.user.id },
+      select: { id: true },
+    });
+
+    if (!member) {
+      return { ok: false, error: "Member profile not found." };
+    }
+
+    const record = await prisma.progressRecord.findFirst({
+      where: { id: recordId, memberId: member.id },
+    });
+
+    if (!record) {
+      return { ok: false, error: "Progress entry not found." };
+    }
+
+    await prisma.progressRecord.delete({
+      where: { id: recordId },
+    });
+
+    return { ok: true };
+  } catch (error) {
+    console.error("Failed to delete progress record:", error);
+    return { ok: false, error: "Failed to delete entry." };
+  }
+}
+
+

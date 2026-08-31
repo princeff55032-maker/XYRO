@@ -12,6 +12,7 @@ export function MemberQrPass({
   gymName,
   gymCode,
   planName,
+  timeSlot,
   isValid: initialValid,
 }: {
   memberId: string;
@@ -19,6 +20,7 @@ export function MemberQrPass({
   gymName: string;
   gymCode: string;
   planName?: string;
+  timeSlot?: string | null;
   isValid: boolean;
 }) {
   const [qrUrl, setQrUrl] = useState<string>("");
@@ -61,46 +63,53 @@ export function MemberQrPass({
 
   useEffect(() => {
     fetchSignedPass();
+    const refreshTimer = setInterval(() => {
+      fetchSignedPass();
+    }, 30000);
 
-    const interval = setInterval(() => {
-      setSecondsRemaining((prev) => {
-        if (prev <= 1) {
-          fetchSignedPass();
-          return 30;
-        }
-        return prev - 1;
-      });
+    const countdownTimer = setInterval(() => {
+      setSecondsRemaining((prev) => (prev > 1 ? prev - 1 : 30));
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(refreshTimer);
+      clearInterval(countdownTimer);
+    };
   }, [fetchSignedPass]);
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-[#E5D9C5] bg-white p-6 md:p-8 shadow-[0_4px_20px_rgba(51,40,30,0.03)]">
-      <div className="relative z-10 flex flex-col items-center justify-between gap-6 md:flex-row">
+    <div className="relative overflow-hidden rounded-3xl border border-[#E5D9C5] bg-white p-6 shadow-[0_12px_40px_rgba(51,40,30,0.06)] md:p-8">
+      <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
+        {/* Member Details & Pass Status */}
         <div className="text-center md:text-left">
-          <div className="flex flex-wrap items-center justify-center gap-2 md:justify-start">
-            <span className="font-mono text-xs font-bold text-[#8B5E34]">
-              {gymName} · {gymCode}
+          <div className="flex items-center justify-center gap-2 md:justify-start">
+            <span className="font-mono text-[11px] font-bold text-[#8B5E34]">
+              {gymName} ({gymCode})
             </span>
-            <Badge
-              variant={isValid ? "success" : "destructive"}
-              className="text-[10px]"
-            >
-              {isValid ? "Active Membership Pass" : "Pass Inactive"}
+            <Badge variant={isValid ? "success" : "destructive"}>
+              {isValid ? "Active Pass" : "Pass Inactive"}
             </Badge>
           </div>
 
-          <h2 className="mt-2 font-display text-2xl font-bold tracking-tight text-[#33281E] md:text-3xl">
+          <h2 className="mt-2 font-display text-2xl font-bold text-[#33281E] md:text-3xl">
             {memberName}
           </h2>
 
-          <div className="mt-2 flex flex-wrap items-center justify-center gap-3 text-xs text-[#8C7A6B] md:justify-start">
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-2.5 text-xs text-[#8C7A6B] md:justify-start">
             <span className="font-mono font-bold text-[#8B5E34]">{memberId}</span>
             <span>•</span>
             <span className="font-semibold text-[#33281E]">
               {planName ?? "Standard Pass"}
             </span>
+            {timeSlot && (
+              <>
+                <span>•</span>
+                <span className="inline-flex items-center gap-1 rounded-md border border-[#E5D9C5] bg-[#F9F8F6] px-2 py-0.5 text-[10px] font-semibold text-[#8B5E34]">
+                  <Clock className="h-2.5 w-2.5" />
+                  {timeSlot}
+                </span>
+              </>
+            )}
           </div>
 
           <p className="mt-4 max-w-sm text-xs leading-relaxed text-[#8C7A6B]">

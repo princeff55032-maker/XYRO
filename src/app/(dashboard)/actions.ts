@@ -80,9 +80,12 @@ export async function addMemberAction(input: {
   phone: string;
   gender?: string;
   dateOfBirth?: string;
+  timeSlot?: string;
   address?: string;
   planId?: string;
   trainerId?: string;
+  discountType?: "FIXED" | "PERCENTAGE";
+  discountValue?: number;
 }): Promise<ActionResult<MemberCredentials>> {
   try {
     const ctx = await requireWorkspaceAuth(
@@ -147,6 +150,7 @@ export async function addMemberAction(input: {
           userId: user.id,
           dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
           gender: (data.gender as "MALE" | "FEMALE" | "OTHER") ?? undefined,
+          timeSlot: data.timeSlot || null,
           address: data.address,
           trainerId: data.trainerId || null,
           isActive: true,
@@ -170,19 +174,31 @@ export async function addMemberAction(input: {
             autoRenew: false,
           },
         });
+
+        // Compute discount
+        const basePrice = plan.price;
+        let discountAmount = 0;
+        if (data.discountType === "PERCENTAGE" && data.discountValue) {
+          discountAmount = (basePrice * Math.min(100, Math.max(0, data.discountValue))) / 100;
+        } else if (data.discountType === "FIXED" && data.discountValue) {
+          discountAmount = Math.min(basePrice, Math.max(0, data.discountValue));
+        }
+        discountAmount = Math.round(discountAmount * 100) / 100;
+        const totalAmount = Math.max(0, Math.round((basePrice - discountAmount) * 100) / 100);
+
         await tx.payment.create({
           data: {
             gymId: gym.id,
             memberId: member.id,
             membershipId: membership.id,
-            amount: plan.price,
+            amount: basePrice,
             tax: 0,
-            discount: 0,
-            totalAmount: plan.price,
+            discount: discountAmount,
+            totalAmount: totalAmount,
             status: "PAID",
             method: "CASH",
             paidAt: new Date(),
-            notes: `New membership — ${plan.name}`,
+            notes: `New membership — ${plan.name}${discountAmount > 0 ? ` (Discount: ₹${discountAmount})` : ""}`,
           },
         });
       }
@@ -280,6 +296,72 @@ export async function removeMemberAction(id: string): Promise<ActionResult> {
     return { ok: false, error: message(e) };
   }
 }
+
+export async function updateMemberDetailsAction(input: {
+  memberId: string;
+  name?: string;
+  phone?: string;
+  email?: string;
+  gender?: string;
+  timeSlot?: string;
+  address?: string;
+  notes?: string;
+  trainerId?: string;
+}): Promise<ActionResult> {
+  try {
+    const ctx = await requireWorkspaceAuth(
+      ["GYM_OWNER", "GYM_ADMIN", "RECEPTIONIST", "SUPER_ADMIN"],
+      { requireEmailVerified: true }
+    );
+    requirePermission(ctx, "members.edit");
+
+    const member = await prisma.member.findFirst({
+      where: { id: input.memberId, gymId: ctx.gym.id, deletedAt: null },
+      include: { user: true },
+    });
+    if (!member) return { ok: false, error: "Member not found" };
+
+    await prisma.$transaction(async (tx) => {
+      // Update User details if provided
+      if (input.name || input.email || input.phone) {
+        await tx.user.update({
+          where: { id: member.userId },
+          data: {
+            ...(input.name ? { name: input.name } : {}),
+            ...(input.email ? { email: input.email.toLowerCase() } : {}),
+            ...(input.phone ? { phone: input.phone } : {}),
+          },
+        });
+      }
+
+      // Update Member profile
+      await tx.member.update({
+        where: { id: member.id },
+        data: {
+          ...(input.gender !== undefined ? { gender: (input.gender as "MALE" | "FEMALE" | "OTHER") || null } : {}),
+          ...(input.timeSlot !== undefined ? { timeSlot: input.timeSlot || null } : {}),
+          ...(input.address !== undefined ? { address: input.address } : {}),
+          ...(input.notes !== undefined ? { notes: input.notes } : {}),
+          ...(input.trainerId !== undefined ? { trainerId: input.trainerId || null } : {}),
+        },
+      });
+    });
+
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "MEMBER_UPDATE_DETAILS",
+      resource: "member",
+      resourceId: member.id,
+      metadata: { memberId: member.memberId, timeSlot: input.timeSlot },
+    });
+
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
+}
+
 
 export type ImportMemberRow = {
   name: string;
@@ -495,6 +577,8 @@ export async function assignPlanToMemberAction(input: {
   memberId: string;
   planId: string;
   paymentMethod?: string;
+  discountType?: "FIXED" | "PERCENTAGE";
+  discountValue?: number;
   notes?: string;
 }): Promise<ActionResult> {
   try {
@@ -515,6 +599,16 @@ export async function assignPlanToMemberAction(input: {
       where: { id: input.planId, gymId: gym.id, deletedAt: null, isActive: true },
     });
     if (!plan) return { ok: false, error: "Membership plan not found or inactive" };
+
+    const basePrice = plan.price;
+    let discountAmount = 0;
+    if (input.discountType === "PERCENTAGE" && input.discountValue) {
+      discountAmount = (basePrice * Math.min(100, Math.max(0, input.discountValue))) / 100;
+    } else if (input.discountType === "FIXED" && input.discountValue) {
+      discountAmount = Math.min(basePrice, Math.max(0, input.discountValue));
+    }
+    discountAmount = Math.round(discountAmount * 100) / 100;
+    const totalAmount = Math.max(0, Math.round((basePrice - discountAmount) * 100) / 100);
 
     await prisma.$transaction(async (tx) => {
       const now = new Date();
@@ -539,20 +633,22 @@ export async function assignPlanToMemberAction(input: {
         },
       });
 
-      // Automatically record in payment ledger
+      // Automatically record in payment ledger with discounts
       await tx.payment.create({
         data: {
           gymId: gym.id,
           memberId: member.id,
           membershipId: membership.id,
-          amount: plan.price,
+          amount: basePrice,
           tax: 0,
-          discount: 0,
-          totalAmount: plan.price,
+          discount: discountAmount,
+          totalAmount: totalAmount,
           status: "PAID",
           method: (input.paymentMethod as never) || "CASH",
           paidAt: new Date(),
-          notes: input.notes || `Plan Assigned — ${plan.name}`,
+          notes:
+            input.notes ||
+            `Plan Assigned — ${plan.name}${discountAmount > 0 ? ` (Discount: ₹${discountAmount})` : ""}`,
         },
       });
     });
@@ -563,7 +659,83 @@ export async function assignPlanToMemberAction(input: {
       action: "PLAN_ASSIGN",
       resource: "member",
       resourceId: member.id,
-      metadata: { planName: plan.name, price: plan.price },
+      metadata: { planName: plan.name, basePrice, discount: discountAmount, totalAmount },
+    });
+
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
+}
+
+export async function updateMembershipAction(input: {
+  membershipId: string;
+  planId?: string;
+  status?: "ACTIVE" | "EXPIRED" | "PAUSED" | "CANCELLED" | "PENDING";
+  startDate?: string;
+  endDate?: string;
+  autoRenew?: boolean;
+  notes?: string;
+}): Promise<ActionResult> {
+  try {
+    const ctx = await requireWorkspaceAuth(
+      ["GYM_OWNER", "GYM_ADMIN", "RECEPTIONIST", "SUPER_ADMIN"],
+      { requireEmailVerified: true }
+    );
+    requirePermission(ctx, "members.edit");
+    const { gym } = ctx;
+
+    const existing = await prisma.membership.findFirst({
+      where: { id: input.membershipId, gymId: gym.id },
+      include: { member: { include: { user: true } }, plan: true },
+    });
+    if (!existing) return { ok: false, error: "Membership record not found" };
+
+    // Validate plan if changing
+    let newPlan = null;
+    if (input.planId && input.planId !== existing.planId) {
+      newPlan = await prisma.membershipPlan.findFirst({
+        where: { id: input.planId, gymId: gym.id, deletedAt: null },
+      });
+      if (!newPlan) return { ok: false, error: "Selected plan not found" };
+    }
+
+    const startDate = input.startDate ? new Date(input.startDate) : existing.startDate;
+    const endDate = input.endDate ? new Date(input.endDate) : existing.endDate;
+    const now = new Date();
+
+    const daysRemaining =
+      endDate > now ? Math.max(0, Math.ceil((endDate.getTime() - now.getTime()) / 86400000)) : 0;
+
+    await prisma.membership.update({
+      where: { id: existing.id },
+      data: {
+        planId: input.planId || existing.planId,
+        status: input.status || existing.status,
+        startDate,
+        endDate,
+        daysRemaining,
+        autoRenew: input.autoRenew !== undefined ? input.autoRenew : existing.autoRenew,
+        pausedAt: input.status === "PAUSED" && existing.status !== "PAUSED" ? new Date() : undefined,
+        resumedAt: input.status === "ACTIVE" && existing.status === "PAUSED" ? new Date() : undefined,
+        cancelledAt: input.status === "CANCELLED" && existing.status !== "CANCELLED" ? new Date() : undefined,
+      },
+    });
+
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "MEMBERSHIP_UPDATE",
+      resource: "membership",
+      resourceId: existing.id,
+      metadata: {
+        memberName: existing.member.user.name,
+        planName: newPlan?.name || existing.plan.name,
+        status: input.status || existing.status,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        notes: input.notes,
+      },
     });
 
     return { ok: true };

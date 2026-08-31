@@ -49,6 +49,7 @@ export const addMemberSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters").optional(),
   dateOfBirth: z.string().optional(),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
+  timeSlot: z.string().optional(),
   address: z.string().optional(),
   emergencyContact: z.string().optional(),
   emergencyPhone: z.string().optional(),
@@ -56,6 +57,30 @@ export const addMemberSchema = z.object({
   notes: z.string().optional(),
   trainerId: z.string().optional(),
   planId: z.string().optional(),
+  discountType: z.enum(["FIXED", "PERCENTAGE"]).optional(),
+  discountValue: z.number().min(0).optional(),
+});
+
+export const updateMemberSchema = z.object({
+  memberId: z.string().min(1, "Member ID is required"),
+  name: z.string().min(2, "Name is required").max(100).optional(),
+  email: z.string().email("Invalid email").optional(),
+  phone: z.string().min(10, "Phone must be at least 10 digits").max(15).optional(),
+  gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
+  timeSlot: z.string().optional(),
+  address: z.string().optional(),
+  notes: z.string().optional(),
+  trainerId: z.string().optional(),
+});
+
+export const updateMembershipSchema = z.object({
+  membershipId: z.string().min(1, "Membership ID is required"),
+  planId: z.string().optional(),
+  status: z.enum(["ACTIVE", "EXPIRED", "PAUSED", "CANCELLED", "PENDING"]).optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  autoRenew: z.boolean().optional(),
+  notes: z.string().optional(),
 });
 
 // ============================================

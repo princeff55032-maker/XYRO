@@ -61,9 +61,6 @@ export function DesktopTitleBar({
         <span className="truncate text-[11px] text-[#8B5E34] font-mono font-bold">
           {gymName ?? "Workspace"} ({gymCode ?? "XYRO-001"})
         </span>
-        <span className="hidden sm:inline-flex items-center gap-1 rounded-full border border-[#E5D9C5] bg-[#F9F8F6] px-2 py-0.5 text-[9px] font-bold text-[#8B5E34] uppercase">
-          Cloud Console
-        </span>
       </div>
 
       {/* Center: Command Bar Quick Search */}
