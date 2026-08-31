@@ -47,6 +47,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       credentials: {
         email: { label: "Email or Member ID", type: "text" },
         password: { label: "Password", type: "password" },
+        portalRole: { label: "Portal Role", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
@@ -54,6 +55,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         const inputIdentifier = (credentials.email as string).trim();
+        const portalRole = (credentials.portalRole as string | undefined)?.toUpperCase();
         const ip = await getClientIp();
         const rateLimitKey = `login:${ip}:${inputIdentifier.toLowerCase()}`;
 
@@ -106,6 +108,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         if (user.status === "DEACTIVATED") {
           throw new Error("Your account has been deactivated");
+        }
+
+        // Enforce Portal Role Boundary
+        if (portalRole === "GYM") {
+          if (user.role === "CUSTOMER") {
+            throw new Error("This is a Gym Member account. Please select the 'Gym Member' tab above to log in.");
+          }
+          if (user.role === "TRAINER") {
+            throw new Error("This is a Trainer account. Please select the 'Trainer' tab above to log in.");
+          }
+        } else if (portalRole === "TRAINER") {
+          if (user.role !== "TRAINER" && user.role !== "SUPER_ADMIN") {
+            throw new Error("This is not a Trainer account. Please select the appropriate portal tab above.");
+          }
+        } else if (portalRole === "MEMBER") {
+          if (user.role !== "CUSTOMER" && user.role !== "SUPER_ADMIN") {
+            throw new Error("This is a staff or admin account. Please select the 'Gym Admin' tab above to log in.");
+          }
         }
 
         // 3. Check Database Temporary Lockout (Uniform security across all roles)

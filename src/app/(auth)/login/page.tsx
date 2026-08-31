@@ -45,15 +45,17 @@ function LoginForm() {
       const res = await signIn("credentials", {
         email: identifier.trim(),
         password: password,
+        portalRole: activeRole,
         redirect: false,
       });
 
       if (res?.error) {
-        setError(
+        // NextAuth sometimes returns 'CredentialsSignin' or custom error in url/error
+        const errorMsg =
           res.error === "CredentialsSignin"
-            ? "Invalid login credentials. Please check your details and try again."
-            : res.error
-        );
+            ? "Invalid login credentials for the selected portal. Please verify your details or tab."
+            : res.error;
+        setError(errorMsg);
         setLoading(false);
         return;
       }
@@ -62,12 +64,12 @@ function LoginForm() {
       const session = await getSession();
       let targetUrl = rawCallback;
 
-      if (!targetUrl || targetUrl === "/" || targetUrl === "/dashboard" || targetUrl === "/login") {
+      if (!targetUrl || targetUrl === "/" || targetUrl === "/dashboard" || targetUrl === "/login" || targetUrl.startsWith("/login")) {
         if (session?.user?.role === "SUPER_ADMIN") {
           targetUrl = "/admin";
-        } else if (session?.user?.role === "TRAINER" || activeRole === "TRAINER") {
+        } else if (session?.user?.role === "TRAINER") {
           targetUrl = "/trainer";
-        } else if (session?.user?.role === "CUSTOMER" || activeRole === "MEMBER") {
+        } else if (session?.user?.role === "CUSTOMER") {
           targetUrl = "/member";
         } else {
           targetUrl = "/dashboard";
