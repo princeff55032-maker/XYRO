@@ -58,12 +58,12 @@ export default async function MembersPage() {
               return {
                 id: m.id,
                 memberId: m.memberId,
-                name: m.user.name,
-                email: m.user.email,
-                phone: m.user.phone,
-                planName: active ? active.plan.name : "None",
+                name: m.user?.name || "Member",
+                email: m.user?.email || "—",
+                phone: m.user?.phone || null,
+                planName: active?.plan?.name || "None",
                 expiryDate: active ? formatDate(active.endDate) : "—",
-                trainerName: m.assignedTrainer ? m.assignedTrainer.user.name : "None",
+                trainerName: m.assignedTrainer?.user?.name || "None",
                 status: m.isActive ? "Active" : "Inactive",
                 joinDate: formatDate(m.joinDate),
               };
@@ -110,10 +110,10 @@ export default async function MembersPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#8B5E34] text-[11px] font-bold text-white shadow-xs">
-                            {getInitials(m.user.name)}
+                            {getInitials(m.user?.name)}
                           </div>
                           <div>
-                            <p className="font-bold text-[#33281E]">{m.user.name}</p>
+                            <p className="font-bold text-[#33281E]">{m.user?.name || "Member"}</p>
                             <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
                               <span className="font-mono text-[10px] text-[#8C7A6B]">Joined {formatDate(m.joinDate)}</span>
                               {m.timeSlot && (
@@ -128,13 +128,13 @@ export default async function MembersPage() {
                       </td>
                       <td className="px-3 py-3 font-mono font-bold text-[#8B5E34]">{m.memberId}</td>
                       <td className="px-3 py-3 text-[11px]">
-                        <p className="text-[#33281E]">{m.user.email}</p>
-                        <p className="font-mono text-[10px] text-[#8C7A6B]">{m.user.phone || "—"}</p>
+                        <p className="text-[#33281E]">{m.user?.email || "—"}</p>
+                        <p className="font-mono text-[10px] text-[#8C7A6B]">{m.user?.phone || "—"}</p>
                       </td>
                       <td className="px-3 py-3">
                         {active ? (
                           <Badge variant="outline" className="font-mono font-bold text-[#8B5E34]">
-                            {active.plan.name}
+                            {active.plan?.name || "Plan"}
                           </Badge>
                         ) : (
                           <span className="text-[#8C7A6B] text-[11px]">No active plan</span>
@@ -153,7 +153,7 @@ export default async function MembersPage() {
                         )}
                       </td>
                       <td className="px-3 py-3 text-[11px] text-[#8C7A6B]">
-                        {m.assignedTrainer ? m.assignedTrainer.user.name : <span className="text-gray-400">Unassigned</span>}
+                        {m.assignedTrainer?.user?.name ? m.assignedTrainer.user.name : <span className="text-gray-400">Unassigned</span>}
                       </td>
                       <td className="px-3 py-3">
                         <Badge variant={m.isActive ? "success" : "destructive"}>
@@ -163,9 +163,9 @@ export default async function MembersPage() {
                       <td className="px-4 py-3 text-right">
                         <MemberActions
                           memberId={m.id}
-                          memberName={m.user.name}
-                          memberEmail={m.user.email}
-                          memberPhone={m.user.phone || ""}
+                          memberName={m.user?.name || "Member"}
+                          memberEmail={m.user?.email || ""}
+                          memberPhone={m.user?.phone || ""}
                           memberGender={m.gender}
                           timeSlot={m.timeSlot}
                           address={m.address}
@@ -176,7 +176,7 @@ export default async function MembersPage() {
                               ? {
                                   id: active.id,
                                   planId: active.planId,
-                                  planName: active.plan.name,
+                                  planName: active.plan?.name || "Plan",
                                   status: active.status,
                                   startDate: active.startDate,
                                   endDate: active.endDate,

@@ -44,9 +44,9 @@ export default async function TrainersPage() {
   const allMembers: GymMemberSummary[] = rawMembers.map((m) => ({
     id: m.id,
     memberId: m.memberId,
-    name: m.user.name,
-    email: m.user.email,
-    phone: m.user.phone,
+    name: m.user?.name || "Member",
+    email: m.user?.email || "—",
+    phone: m.user?.phone || null,
     assignedTrainerId: m.trainerId,
     assignedTrainerName: m.assignedTrainer?.user?.name || null,
     planName: m.memberships[0]?.plan?.name || null,
@@ -87,13 +87,13 @@ export default async function TrainersPage() {
             >
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#8B5E34] text-sm font-bold text-white shadow-xs">
-                  {getInitials(t.user.name)}
+                  {getInitials(t.user?.name)}
                 </div>
                 <div className="min-w-0">
                   <h3 className="truncate font-display text-base font-bold text-[#33281E]">
-                    {t.user.name}
+                    {t.user?.name || "Trainer"}
                   </h3>
-                  <p className="truncate text-xs text-[#8C7A6B]">{t.user.email}</p>
+                  <p className="truncate text-xs text-[#8C7A6B]">{t.user?.email || "—"}</p>
                 </div>
                 <Badge
                   variant={t.isActive ? "success" : "secondary"}

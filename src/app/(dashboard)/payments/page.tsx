@@ -36,7 +36,7 @@ export default async function PaymentsPage() {
 
   const memberOptions = members.map((m) => ({
     id: m.id,
-    label: `${m.user.name} (${m.memberId})`,
+    label: `${m.user?.name || "Member"} (${m.memberId})`,
   }));
 
   return (
@@ -49,9 +49,9 @@ export default async function PaymentsPage() {
           <p className="mt-1 text-xs text-[#8C7A6B]">
             Reconciled revenue:{" "}
             <span className="font-mono font-bold text-[#8B5E34]">
-              {formatCurrency(totals._sum.totalAmount ?? 0)}
+              {formatCurrency(totals?._sum?.totalAmount ?? 0)}
             </span>{" "}
-            · {totals._count} recorded transaction{totals._count === 1 ? "" : "s"}
+            · {totals?._count || 0} recorded transaction{totals?._count === 1 ? "" : "s"}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -59,7 +59,7 @@ export default async function PaymentsPage() {
             data={payments.map((p) => ({
               id: p.id,
               invoiceNumber: `INV-${p.id.slice(-6).toUpperCase()}`,
-              memberName: p.member.user.name,
+              memberName: p.member?.user?.name || "Direct Counter / Walk-in",
               amount: p.amount,
               tax: p.tax,
               totalAmount: p.totalAmount,
@@ -114,7 +114,7 @@ export default async function PaymentsPage() {
                 {payments.map((p) => (
                   <tr key={p.id} className="transition-colors hover:bg-[#FAF9F7]">
                     <td className="px-5 py-3.5 font-semibold text-[#33281E]">
-                      {p.member.user.name}
+                      {p.member?.user?.name || "Direct Inflow / Counter"}
                     </td>
                     <td className="px-4 py-3.5 font-mono font-bold text-emerald-800">
                       {formatCurrency(p.totalAmount)}

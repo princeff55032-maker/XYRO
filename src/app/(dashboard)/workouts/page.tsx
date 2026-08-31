@@ -70,7 +70,7 @@ export default async function WorkoutsPage() {
     }),
   ]);
 
-  const memberOptions = members.map((m) => ({ id: m.id, label: m.user.name }));
+  const memberOptions = members.map((m) => ({ id: m.id, label: m.user?.name || "Member" }));
 
   return (
     <div className="space-y-6">
@@ -101,7 +101,7 @@ export default async function WorkoutsPage() {
                   <div className="min-w-0">
                     <h3 className="truncate font-display text-base font-bold text-[#33281E]">{w.name}</h3>
                     <p className="truncate text-xs font-medium text-[#8C7A6B]">
-                      {w.member.user.name} {w.trainer ? `· ${w.trainer.user.name}` : ""} · {w._count.exercises} exercises
+                      {w.member?.user?.name || "Member"} {w.trainer?.user?.name ? `· ${w.trainer.user.name}` : ""} · {w._count.exercises} exercises
                     </p>
                   </div>
                   <Badge variant="default" className="font-mono text-[10px]">Active</Badge>
@@ -130,7 +130,7 @@ export default async function WorkoutsPage() {
                   <div className="min-w-0">
                     <h3 className="truncate font-display text-base font-bold text-[#33281E]">{d.name}</h3>
                     <p className="truncate text-xs font-medium text-[#8C7A6B]">
-                      {d.member.user.name} · {d._count.meals} meals
+                      {d.member?.user?.name || "Member"} · {d._count.meals} meals
                     </p>
                   </div>
                   <Badge variant="default" className="font-mono text-[10px]">Active</Badge>

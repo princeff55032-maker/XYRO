@@ -102,10 +102,10 @@ export default async function MemberPortalPage() {
       {/* 1. Digital QR Pass Banner */}
       <MemberQrPass
         memberId={member.memberId}
-        memberName={member.user.name}
-        gymName={member.gym.name}
-        gymCode={member.gym.gymCode}
-        planName={activeMembership?.plan.name}
+        memberName={member.user?.name || "Member"}
+        gymName={member.gym?.name || "Gym"}
+        gymCode={member.gym?.gymCode || "XYRO-001"}
+        planName={activeMembership?.plan?.name}
         timeSlot={member.timeSlot}
         isValid={isPassValid}
       />
@@ -122,7 +122,7 @@ export default async function MemberPortalPage() {
             </Badge>
           </div>
           <p className="mt-3 font-display text-xl font-bold text-[#33281E]">
-            {activeMembership ? activeMembership.plan.name : "Expired"}
+            {activeMembership?.plan?.name || "Expired"}
           </p>
           <p className="mt-1 text-xs text-[#8C7A6B]">
             {activeMembership
@@ -131,10 +131,10 @@ export default async function MemberPortalPage() {
           </p>
           <div className="mt-3">
             <MemberPaymentCheckout
-              memberName={member.user.name}
-              gymName={member.gym.name}
-              currentPlanName={activeMembership?.plan.name}
-              planPrice={activeMembership?.plan.price}
+              memberName={member.user?.name || "Member"}
+              gymName={member.gym?.name || "Gym"}
+              currentPlanName={activeMembership?.plan?.name}
+              planPrice={activeMembership?.plan?.price}
             />
           </div>
         </div>
@@ -182,7 +182,7 @@ export default async function MemberPortalPage() {
             </div>
           </div>
           <p className="mt-3 font-display text-base font-bold text-[#33281E] truncate">
-            {member.assignedTrainer ? member.assignedTrainer.user.name : "Gym Floor Trainer"}
+            {member.assignedTrainer?.user?.name || "Gym Floor Trainer"}
           </p>
           <p className="mt-1 text-xs text-[#8B5E34] font-medium truncate">
             {member.timeSlot ? `⏰ ${member.timeSlot}` : "⏰ All Day / Flexible"}

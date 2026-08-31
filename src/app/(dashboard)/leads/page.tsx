@@ -9,7 +9,7 @@ export default async function LeadsPage() {
   const gymId = session.user.gymId!;
 
   const [gym, leads, plans] = await Promise.all([
-    prisma.gym.findUniqueOrThrow({
+    prisma.gym.findUnique({
       where: { id: gymId },
       select: { gymCode: true, name: true },
     }),
@@ -23,6 +23,8 @@ export default async function LeadsPage() {
     }),
   ]);
 
+  const gymCode = gym?.gymCode || session.user.gymCode || "XYRO-001";
+
   return (
     <div className="space-y-6">
       <div>
@@ -32,7 +34,7 @@ export default async function LeadsPage() {
         </p>
       </div>
 
-      <LeadsClient leads={leads} plans={plans} gymCode={gym.gymCode} />
+      <LeadsClient leads={leads} plans={plans} gymCode={gymCode} />
     </div>
   );
 }

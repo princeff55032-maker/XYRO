@@ -82,9 +82,13 @@ export default async function TrainerPortalPage() {
   const formattedAssignedMembers = trainer.members.map((m) => ({
     id: m.id,
     memberId: m.memberId,
-    user: m.user,
+    user: {
+      name: m.user?.name || "Member",
+      email: m.user?.email || "—",
+      phone: m.user?.phone || null,
+    },
     assignedTrainerId: trainer.id,
-    assignedTrainerName: trainer.user.name,
+    assignedTrainerName: trainer.user?.name || "Trainer",
     membershipPlanName: m.memberships[0]?.plan?.name || null,
     isActive: m.isActive,
     activeWorkoutPlan: m.workoutPlans[0]

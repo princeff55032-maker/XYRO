@@ -57,7 +57,7 @@ export default async function ClassesPage() {
 
   const trainerOptions = trainers.map((t) => ({
     id: t.id,
-    name: t.user.name,
+    name: t.user?.name || "Trainer",
   }));
 
   return (

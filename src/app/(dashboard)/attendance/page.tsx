@@ -40,7 +40,7 @@ export default async function AttendancePage() {
     }),
   ]);
 
-  const memberOptions = members.map((m) => ({ id: m.id, label: `${m.user.name} (${m.memberId})` }));
+  const memberOptions = members.map((m) => ({ id: m.id, label: `${m.user?.name || "Member"} (${m.memberId})` }));
 
   const totalThisWeek = thisWeek.reduce((a, r) => a + r._count, 0);
 
@@ -58,8 +58,8 @@ export default async function AttendancePage() {
           <ExportAttendanceButton
             data={today.map((a) => ({
               id: a.id,
-              memberName: a.member.user.name,
-              memberId: a.member.memberId,
+              memberName: a.member?.user?.name || "Member",
+              memberId: a.member?.memberId || "—",
               checkInDate: formatDate(a.date),
               checkInTime: new Date(a.checkIn).toLocaleTimeString([], {
                 hour: "2-digit",
@@ -97,7 +97,7 @@ export default async function AttendancePage() {
                 <tbody className="divide-y divide-[#E5D9C5]">
                   {today.map((a) => (
                     <tr key={a.id} className="transition-colors hover:bg-[#FAF9F7]">
-                      <td className="px-6 py-3.5 font-semibold text-[#33281E]">{a.member.user.name}</td>
+                      <td className="px-6 py-3.5 font-semibold text-[#33281E]">{a.member?.user?.name || "Member"}</td>
                       <td className="px-4 py-3.5 text-xs font-mono text-[#8C7A6B]">
                         {a.checkIn.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
                       </td>
