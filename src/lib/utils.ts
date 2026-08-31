@@ -5,15 +5,18 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(amount: number, currency = "INR", symbol = "₹"): string {
+export function formatCurrency(amount?: number | null, currency = "INR", symbol = "₹"): string {
+  const num = typeof amount === "number" && !isNaN(amount) ? amount : 0;
   if (currency === "INR") {
-    return `${symbol}${amount.toLocaleString("en-IN")}`;
+    return `${symbol}${num.toLocaleString("en-IN")}`;
   }
-  return `${symbol}${amount.toLocaleString()}`;
+  return `${symbol}${num.toLocaleString()}`;
 }
 
-export function formatDate(date: Date | string, format = "short"): string {
+export function formatDate(date?: Date | string | null, format = "short"): string {
+  if (!date) return "—";
   const d = new Date(date);
+  if (isNaN(d.getTime())) return "—";
   if (format === "short") {
     return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
   }
@@ -36,8 +39,10 @@ export function generateInvoiceNumber(gymCode: string, sequence: number): string
   return `${gymCode}-INV-${year}-${String(sequence).padStart(5, "0")}`;
 }
 
-export function daysRemaining(endDate: Date | string): number {
+export function daysRemaining(endDate?: Date | string | null): number {
+  if (!endDate) return 0;
   const end = new Date(endDate);
+  if (isNaN(end.getTime())) return 0;
   const now = new Date();
   const diff = end.getTime() - now.getTime();
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
@@ -58,11 +63,10 @@ export function slugify(text: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-export function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+export function getInitials(name?: string | null): string {
+  if (!name || typeof name !== "string") return "XY";
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "XY";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }

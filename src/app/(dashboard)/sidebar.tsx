@@ -50,13 +50,13 @@ const navSections = [
 export function Sidebar({
   gymName,
   gymCode,
-  userName,
-  userRole,
+  userName = "Gym Admin",
+  userRole = "GYM_OWNER",
 }: {
   gymName?: string;
   gymCode?: string;
-  userName: string;
-  userRole: string;
+  userName?: string | null;
+  userRole?: string | null;
 }) {
   const pathname = usePathname();
 
@@ -126,11 +126,11 @@ export function Sidebar({
       <div className="border-t border-[#E5D9C5] p-2.5 bg-white">
         <div className="flex items-center gap-2.5 rounded-2xl border border-[#E5D9C5] bg-[#F9F8F6] px-3 py-2 shadow-xs">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#8B5E34] text-[11px] font-bold text-white shadow-xs">
-            {getInitials(userName)}
+            {getInitials(userName || "XY")}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-bold text-[#33281E]">{userName}</p>
-            <p className="truncate font-mono text-[9px] uppercase text-[#8B5E34] font-semibold">{userRole.replace("_", " ")}</p>
+            <p className="truncate text-xs font-bold text-[#33281E]">{userName || "Gym Admin"}</p>
+            <p className="truncate font-mono text-[9px] uppercase text-[#8B5E34] font-semibold">{(userRole || "ADMIN").replace("_", " ")}</p>
           </div>
           <button
             onClick={() => signOut({ callbackUrl: "/" })}

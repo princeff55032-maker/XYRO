@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   Users,
   IndianRupee,
@@ -21,7 +22,11 @@ export const metadata = { title: "Overview" };
 
 export default async function DashboardPage() {
   const session = await requireTenant();
-  const gymId = session.user.gymId!;
+  const gymId = session.user.gymId;
+
+  if (!gymId) {
+    redirect("/register");
+  }
 
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -141,7 +146,7 @@ export default async function DashboardPage() {
   }
 
   // Attendance and Occupancy Rates
-  const monthlyInflow = monthRevenue._sum.totalAmount ?? 0;
+  const monthlyInflow = monthRevenue?._sum?.totalAmount ?? 0;
 
   return (
     <div className="space-y-6 max-w-full">
@@ -188,7 +193,7 @@ export default async function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Today's Revenue"
-          value={formatCurrency(todayRevenue._sum.totalAmount ?? 0)}
+          value={formatCurrency(todayRevenue?._sum?.totalAmount ?? 0)}
           icon={IndianRupee}
           hint={`MTD Inflow: ${formatCurrency(monthlyInflow)}`}
         />
