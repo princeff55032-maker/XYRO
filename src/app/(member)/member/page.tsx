@@ -193,7 +193,7 @@ export default async function MemberPortalPage() {
             {member.assignedTrainer?.user?.name || "Gym Floor Trainer"}
           </p>
           <p className="mt-1 text-xs text-[#8B5E34] font-medium truncate">
-            {member.timeSlot ? `⏰ ${member.timeSlot}` : "⏰ All Day / Flexible"}
+            {member.timeSlot ? member.timeSlot : "All Day / Flexible"}
           </p>
         </div>
       </div>

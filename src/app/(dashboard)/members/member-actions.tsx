@@ -428,13 +428,13 @@ export function MemberActions({
                   <SelectValue placeholder="Select Time Slot" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Morning (06:00 AM - 09:00 AM)">🌅 Morning (06:00 AM - 09:00 AM)</SelectItem>
-                  <SelectItem value="Midday (09:00 AM - 12:00 PM)">☀️ Midday (09:00 AM - 12:00 PM)</SelectItem>
-                  <SelectItem value="Afternoon (12:00 PM - 04:00 PM)">🌤️ Afternoon (12:00 PM - 04:00 PM)</SelectItem>
-                  <SelectItem value="Evening (04:00 PM - 08:00 PM)">🌆 Evening (04:00 PM - 08:00 PM)</SelectItem>
-                  <SelectItem value="Night (08:00 PM - 10:00 PM)">🌙 Night (08:00 PM - 10:00 PM)</SelectItem>
-                  <SelectItem value="All Day / Flexible">⚡ All Day / Flexible Access</SelectItem>
-                  <SelectItem value="CUSTOM">✏️ Custom Time Slot...</SelectItem>
+                  <SelectItem value="Morning (06:00 AM - 09:00 AM)">Morning (06:00 AM - 09:00 AM)</SelectItem>
+                  <SelectItem value="Midday (09:00 AM - 12:00 PM)">Midday (09:00 AM - 12:00 PM)</SelectItem>
+                  <SelectItem value="Afternoon (12:00 PM - 04:00 PM)">Afternoon (12:00 PM - 04:00 PM)</SelectItem>
+                  <SelectItem value="Evening (04:00 PM - 08:00 PM)">Evening (04:00 PM - 08:00 PM)</SelectItem>
+                  <SelectItem value="Night (08:00 PM - 10:00 PM)">Night (08:00 PM - 10:00 PM)</SelectItem>
+                  <SelectItem value="All Day / Flexible">All Day / Flexible Access</SelectItem>
+                  <SelectItem value="CUSTOM">Custom Time Slot...</SelectItem>
                 </SelectContent>
               </Select>
 
