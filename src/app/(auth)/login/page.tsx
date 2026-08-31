@@ -67,9 +67,9 @@ function LoginForm() {
       if (!targetUrl || targetUrl === "/" || targetUrl === "/dashboard" || targetUrl === "/login" || targetUrl.startsWith("/login")) {
         if (session?.user?.role === "SUPER_ADMIN") {
           targetUrl = "/admin";
-        } else if (session?.user?.role === "TRAINER") {
+        } else if (session?.user?.role === "TRAINER" || activeRole === "TRAINER") {
           targetUrl = "/trainer";
-        } else if (session?.user?.role === "CUSTOMER") {
+        } else if (session?.user?.role === "CUSTOMER" || activeRole === "MEMBER") {
           targetUrl = "/member";
         } else {
           targetUrl = "/dashboard";

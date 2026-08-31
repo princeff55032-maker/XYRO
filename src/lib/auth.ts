@@ -266,49 +266,52 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       // Re-hydrate and re-validate user account status from database
       if (token.sub) {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: token.sub },
-          select: {
-            role: true,
-            status: true,
-            deletedAt: true,
-            ownedGyms: { select: { id: true, gymCode: true }, take: 1 },
-            gymStaff: { select: { gymId: true, gym: { select: { gymCode: true } } }, take: 1 },
-            trainer: { select: { gymId: true, gym: { select: { gymCode: true } } } },
-            member: { select: { memberId: true, gymId: true, gym: { select: { gymCode: true } } } },
-          },
-        });
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.sub },
+            select: {
+              role: true,
+              status: true,
+              deletedAt: true,
+              ownedGyms: { select: { id: true, gymCode: true }, take: 1 },
+              gymStaff: { select: { gymId: true, gym: { select: { gymCode: true } } }, take: 1 },
+              trainer: { select: { gymId: true, gym: { select: { gymCode: true } } } },
+              member: { select: { memberId: true, gymId: true, gym: { select: { gymCode: true } } } },
+            },
+          });
 
-        // If user was deleted or suspended, clear token to invalidate session immediately
-        if (!dbUser || dbUser.status !== "ACTIVE" || dbUser.deletedAt) {
-          return {};
+          if (dbUser && !dbUser.deletedAt && dbUser.status !== "DEACTIVATED" && dbUser.status !== "SUSPENDED") {
+            token.role = dbUser.role;
+            token.gymId =
+              dbUser.ownedGyms[0]?.id ||
+              dbUser.gymStaff[0]?.gymId ||
+              dbUser.trainer?.gymId ||
+              dbUser.member?.gymId ||
+              token.gymId ||
+              null;
+            token.gymCode =
+              dbUser.ownedGyms[0]?.gymCode ||
+              dbUser.gymStaff[0]?.gym?.gymCode ||
+              dbUser.trainer?.gym?.gymCode ||
+              dbUser.member?.gym?.gymCode ||
+              token.gymCode ||
+              null;
+            token.memberId = dbUser.member?.memberId || token.memberId || null;
+          }
+        } catch (err) {
+          console.warn("[NextAuth JWT]: Database re-hydration fallback:", err);
         }
-
-        token.role = dbUser.role;
-        token.gymId =
-          dbUser.ownedGyms[0]?.id ||
-          dbUser.gymStaff[0]?.gymId ||
-          dbUser.trainer?.gymId ||
-          dbUser.member?.gymId ||
-          null;
-        token.gymCode =
-          dbUser.ownedGyms[0]?.gymCode ||
-          dbUser.gymStaff[0]?.gym?.gymCode ||
-          dbUser.trainer?.gym?.gymCode ||
-          dbUser.member?.gym?.gymCode ||
-          null;
-        token.memberId = dbUser.member?.memberId || null;
       }
 
       return token;
     },
     async session({ session, token }) {
-      if (token) {
-        session.user.id = token.sub!;
-        session.user.role = token.role as UserRole;
-        session.user.gymId = token.gymId as string | undefined;
-        session.user.gymCode = token.gymCode as string | undefined;
-        session.user.memberId = token.memberId as string | undefined;
+      if (token && token.sub) {
+        session.user.id = token.sub;
+        session.user.role = (token.role as UserRole) || "CUSTOMER";
+        session.user.gymId = (token.gymId as string | null) || undefined;
+        session.user.gymCode = (token.gymCode as string | null) || undefined;
+        session.user.memberId = (token.memberId as string | null) || undefined;
       }
       return session;
     },

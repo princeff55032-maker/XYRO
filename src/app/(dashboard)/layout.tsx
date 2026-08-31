@@ -16,10 +16,12 @@ export default async function DashboardLayout({
 }) {
   const session = await requireTenant();
 
-  const gym = await prisma.gym.findUnique({
-    where: { id: session.user.gymId! },
-    select: { name: true, gymCode: true },
-  });
+  const gym = session.user.gymId
+    ? await prisma.gym.findUnique({
+        where: { id: session.user.gymId },
+        select: { name: true, gymCode: true },
+      })
+    : null;
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[#F9F8F6] text-[#33281E] font-sans select-none">
