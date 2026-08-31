@@ -5,8 +5,21 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+function getCleanDatabaseUrl(): string {
+  let url = process.env.DATABASE_URL || "";
+  if (url.includes(".pooler.supabase.com")) {
+    url = url
+      .replace(":6543", ":5432")
+      .replace("?pgbouncer=true&", "?")
+      .replace("?pgbouncer=true", "")
+      .replace("&pgbouncer=true", "");
+  }
+  return url;
+}
+
 function createPrismaClient() {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+  const connectionString = getCleanDatabaseUrl();
+  const adapter = new PrismaPg({ connectionString });
   return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
