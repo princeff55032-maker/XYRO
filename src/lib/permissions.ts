@@ -7,28 +7,37 @@ export type Permission =
   | "members.create"
   | "members.edit"
   | "members.delete"
-  // Payments
+  // Payments & Billing
   | "payments.view"
   | "payments.create"
   | "payments.edit"
   | "payments.refund"
+  | "billing.manage"
   // Invoices
   | "invoices.view"
   | "invoices.create"
   | "invoices.cancel"
-  // Trainers & Workouts
+  // Trainers, Classes & Workouts
   | "trainers.view"
   | "trainers.manage"
   | "workouts.manage"
   | "diets.manage"
+  | "classes.manage"
   // Analytics & Dashboard
   | "analytics.view"
-  // Settings & Workspace
+  // Leads & CRM
+  | "leads.manage"
+  // Equipment & Expenses
+  | "equipment.manage"
+  | "expenses.manage"
+  // Settings, Workspace & Security
   | "settings.manage"
   | "staff.manage"
+  | "subscriptions.manage"
   | "exports.manage"
   | "automation.manage"
-  | "access_control.manage";
+  | "access_control.manage"
+  | "audit_logs.view";
 
 /**
  * Role-to-Permissions Mapping Matrix
@@ -43,6 +52,7 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     "payments.create",
     "payments.edit",
     "payments.refund",
+    "billing.manage",
     "invoices.view",
     "invoices.create",
     "invoices.cancel",
@@ -50,12 +60,18 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     "trainers.manage",
     "workouts.manage",
     "diets.manage",
+    "classes.manage",
     "analytics.view",
+    "leads.manage",
+    "equipment.manage",
+    "expenses.manage",
     "settings.manage",
     "staff.manage",
+    "subscriptions.manage",
     "exports.manage",
     "automation.manage",
     "access_control.manage",
+    "audit_logs.view",
   ],
   GYM_OWNER: [
     "members.view",
@@ -66,6 +82,7 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     "payments.create",
     "payments.edit",
     "payments.refund",
+    "billing.manage",
     "invoices.view",
     "invoices.create",
     "invoices.cancel",
@@ -73,12 +90,18 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     "trainers.manage",
     "workouts.manage",
     "diets.manage",
+    "classes.manage",
     "analytics.view",
+    "leads.manage",
+    "equipment.manage",
+    "expenses.manage",
     "settings.manage",
     "staff.manage",
+    "subscriptions.manage",
     "exports.manage",
     "automation.manage",
     "access_control.manage",
+    "audit_logs.view",
   ],
   GYM_ADMIN: [
     "members.view",
@@ -89,6 +112,7 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     "payments.create",
     "payments.edit",
     "payments.refund",
+    "billing.manage",
     "invoices.view",
     "invoices.create",
     "invoices.cancel",
@@ -96,12 +120,17 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     "trainers.manage",
     "workouts.manage",
     "diets.manage",
+    "classes.manage",
     "analytics.view",
+    "leads.manage",
+    "equipment.manage",
+    "expenses.manage",
     "settings.manage",
     "staff.manage",
     "exports.manage",
     "automation.manage",
     "access_control.manage",
+    "audit_logs.view",
   ],
   RECEPTIONIST: [
     "members.view",
@@ -112,6 +141,8 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     "invoices.view",
     "invoices.create",
     "trainers.view",
+    "leads.manage",
+    "classes.manage",
     "access_control.manage",
   ],
   TRAINER: [
@@ -119,6 +150,7 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     "trainers.view",
     "workouts.manage",
     "diets.manage",
+    "classes.manage",
     "access_control.manage",
   ],
   CUSTOMER: [],

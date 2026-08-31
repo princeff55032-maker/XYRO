@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { verifyMemberQrToken } from "@/lib/qr-token";
+import { authenticateAccessDevice } from "@/lib/device-auth";
+import { getClientIp, checkRateLimit } from "@/lib/ratelimit";
 
 export type AccessStatus =
   | "ACCESS_GRANTED"
@@ -8,77 +11,105 @@ export type AccessStatus =
   | "INVALID_QR"
   | "MEMBER_NOT_FOUND"
   | "DUPLICATE_SCAN"
-  | "DEVICE_OFFLINE";
+  | "FACILITY_MISMATCH"
+  | "DEVICE_UNAUTHORIZED";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { qrPayload, memberId, gymCode, method = "QR", deviceId } = body;
-
-    let targetMemberId = memberId;
-    let targetGymCode = gymCode;
-
-    // 1. If QR payload was provided, parse and validate dynamic token
-    if (qrPayload) {
-      try {
-        const parsed = typeof qrPayload === "string" ? JSON.parse(qrPayload) : qrPayload;
-        targetMemberId = parsed.id;
-        targetGymCode = parsed.gym;
-
-        // Check freshness (token expires after 90 seconds)
-        const tokenTimestamp = parsed.ts;
-        const now = Date.now();
-        if (!tokenTimestamp || now - tokenTimestamp > 90000 || now - tokenTimestamp < -10000) {
-          return NextResponse.json({
-            status: "INVALID_QR" as AccessStatus,
-            message: "Dynamic QR code has expired. Please refresh your member pass.",
-            granted: false,
-          }, { status: 400 });
-        }
-      } catch {
-        return NextResponse.json({
-          status: "INVALID_QR" as AccessStatus,
-          message: "Malformed or unrecognized QR format.",
+    // 1. Rate Limiting (60 requests per minute per IP / Device)
+    const ip = await getClientIp();
+    const rl = await checkRateLimit(`access-verify:${ip}`, 60, 60);
+    if (!rl.success) {
+      return NextResponse.json(
+        {
+          status: "ACCESS_DENIED" as AccessStatus,
+          message: "Rate limit exceeded. Please wait before scanning again.",
           granted: false,
-        }, { status: 400 });
+        },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rl.retryAfterSeconds) },
+        }
+      );
+    }
+
+    // 2. Authenticate Hardware Device / Staff Session
+    const authResult = await authenticateAccessDevice(req);
+    if (!authResult.ok) {
+      return NextResponse.json(
+        {
+          status: "DEVICE_UNAUTHORIZED" as AccessStatus,
+          message: authResult.error,
+          granted: false,
+        },
+        { status: authResult.status }
+      );
+    }
+
+    const { gymId: deviceGymId, gymCode: deviceGymCode, deviceName } = authResult;
+
+    // 3. Parse JSON Body
+    const body = await req.json().catch(() => ({}));
+    const { qrPayload, memberId, method = "QR" } = body;
+
+    let targetMemberId: string | null = null;
+    let targetGymId: string | null = null;
+
+    // 4. Verify Cryptographic QR Token
+    if (qrPayload) {
+      const qrVerification = verifyMemberQrToken(qrPayload);
+      if (!qrVerification.valid) {
+        return NextResponse.json(
+          {
+            status: "INVALID_QR" as AccessStatus,
+            message: qrVerification.error,
+            granted: false,
+          },
+          { status: 400 }
+        );
       }
+
+      targetMemberId = qrVerification.payload.sub;
+      targetGymId = qrVerification.payload.gymId;
+
+      // Strict Multi-Tenant Boundary: Token must belong to the device's gym
+      if (targetGymId !== deviceGymId) {
+        return NextResponse.json(
+          {
+            status: "FACILITY_MISMATCH" as AccessStatus,
+            message: "Member pass belongs to a different gym facility.",
+            granted: false,
+          },
+          { status: 403 }
+        );
+      }
+    } else if (memberId && typeof memberId === "string") {
+      // Manual memberId lookup (only permitted when scanner or staff is authenticated)
+      targetMemberId = memberId.trim();
+      targetGymId = deviceGymId;
+    } else {
+      return NextResponse.json(
+        {
+          status: "INVALID_QR" as AccessStatus,
+          message: "Missing QR pass token or member identification.",
+          granted: false,
+        },
+        { status: 400 }
+      );
     }
 
-    if (!targetMemberId) {
-      return NextResponse.json({
-        status: "MEMBER_NOT_FOUND" as AccessStatus,
-        message: "Missing athlete identification.",
-        granted: false,
-      }, { status: 400 });
-    }
-
-    // 2. Lookup Gym Tenant
-    const gym = await prisma.gym.findFirst({
-      where: {
-        ...(targetGymCode ? { gymCode: targetGymCode } : {}),
-        deletedAt: null,
-      },
-    });
-
-    if (!gym) {
-      return NextResponse.json({
-        status: "ACCESS_DENIED" as AccessStatus,
-        message: "Facility not recognized or inactive.",
-        granted: false,
-      }, { status: 404 });
-    }
-
-    // 3. Lookup Member in Gym
+    // 5. Lookup Member strictly within the authenticated Gym Tenant
     const member = await prisma.member.findFirst({
       where: {
-        OR: [
-          { id: targetMemberId, gymId: gym.id },
-          { memberId: targetMemberId, gymId: gym.id },
-        ],
+        gymId: deviceGymId,
         deletedAt: null,
+        OR: [
+          { id: targetMemberId },
+          { memberId: targetMemberId },
+        ],
       },
       include: {
-        user: { select: { name: true, email: true } },
+        user: { select: { name: true } },
         memberships: {
           where: { status: "ACTIVE" },
           include: { plan: { select: { name: true } } },
@@ -89,88 +120,111 @@ export async function POST(req: Request) {
     });
 
     if (!member) {
-      return NextResponse.json({
-        status: "MEMBER_NOT_FOUND" as AccessStatus,
-        message: "Athlete profile not found in facility records.",
-        granted: false,
-      }, { status: 404 });
+      return NextResponse.json(
+        {
+          status: "MEMBER_NOT_FOUND" as AccessStatus,
+          message: "Member profile not found in facility records.",
+          granted: false,
+        },
+        { status: 404 }
+      );
     }
 
     if (!member.isActive) {
-      return NextResponse.json({
-        status: "ACCESS_DENIED" as AccessStatus,
-        message: "Athlete account has been paused or deactivated.",
-        granted: false,
-        athleteName: member.user.name,
-      }, { status: 403 });
+      return NextResponse.json(
+        {
+          status: "ACCESS_DENIED" as AccessStatus,
+          message: "Member account is inactive or paused.",
+          granted: false,
+          memberName: member.user.name,
+        },
+        { status: 403 }
+      );
     }
 
-    // 4. Verify Active Membership Validity
+    // 6. Verify Active Membership Validity
     const activeMembership = member.memberships[0];
     const now = new Date();
 
     if (!activeMembership || activeMembership.endDate < now) {
-      return NextResponse.json({
-        status: "MEMBERSHIP_EXPIRED" as AccessStatus,
-        message: "Membership validity has lapsed. Please renew at the front desk.",
-        granted: false,
-        athleteName: member.user.name,
-      }, { status: 403 });
+      return NextResponse.json(
+        {
+          status: "MEMBERSHIP_EXPIRED" as AccessStatus,
+          message: "Membership plan has expired. Please renew at the front desk.",
+          granted: false,
+          memberName: member.user.name,
+        },
+        { status: 403 }
+      );
     }
 
-    // 5. Replay & Duplicate Scan Protection (Within 5 minutes)
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    const recentScan = await prisma.attendance.findFirst({
-      where: {
-        gymId: gym.id,
-        memberId: member.id,
-        checkIn: { gte: fiveMinutesAgo },
-      },
+    // 7. Atomic Anti-Passback Guard & Check-In Creation (Race-Condition Free)
+    const checkInResult = await prisma.$transaction(async (tx) => {
+      const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+      const recentScan = await tx.attendance.findFirst({
+        where: {
+          gymId: deviceGymId,
+          memberId: member.id,
+          checkIn: { gte: threeMinutesAgo },
+        },
+      });
+
+      if (recentScan) {
+        return { duplicate: true, recentCheckIn: recentScan.checkIn };
+      }
+
+      const dayStart = new Date();
+      dayStart.setHours(0, 0, 0, 0);
+
+      const record = await tx.attendance.create({
+        data: {
+          gymId: deviceGymId,
+          memberId: member.id,
+          date: dayStart,
+          checkIn: now,
+          method: method === "MANUAL" ? "MANUAL" : "MEMBER_QR",
+          notes: `Access verified via ${deviceName}`,
+        },
+      });
+
+      return { duplicate: false, record };
+    }, {
+      isolationLevel: "Serializable",
     });
 
-    if (recentScan) {
-      return NextResponse.json({
-        status: "DUPLICATE_SCAN" as AccessStatus,
-        message: `Athlete ${member.user.name} already checked in within the last 5 minutes.`,
-        granted: false,
-        athleteName: member.user.name,
-      }, { status: 429 });
+    if (checkInResult.duplicate) {
+      return NextResponse.json(
+        {
+          status: "DUPLICATE_SCAN" as AccessStatus,
+          message: `${member.user.name} already checked in within the last 3 minutes.`,
+          granted: false,
+          memberName: member.user.name,
+        },
+        { status: 429 }
+      );
     }
 
-    // 6. Record Authorized Check-in Event
-    const dayStart = new Date();
-    dayStart.setHours(0, 0, 0, 0);
+    const record = checkInResult.record!;
 
-    const record = await prisma.attendance.create({
-      data: {
-        gymId: gym.id,
-        memberId: member.id,
-        date: dayStart,
-        checkIn: now,
-        method: method === "MANUAL" ? "MANUAL" : "MEMBER_QR",
-        notes: `Turnstile/Gate check-in ${deviceId ? `(Device: ${deviceId})` : ""}`,
-      },
-    });
-
+    // 8. Minimized Secure Response (Zero PII leaks)
     return NextResponse.json({
       status: "ACCESS_GRANTED" as AccessStatus,
       message: `Welcome, ${member.user.name}! Turnstile access unlocked.`,
       granted: true,
-      athlete: {
-        id: member.id,
-        memberId: member.memberId,
-        name: member.user.name,
-        planName: activeMembership.plan.name,
-        validUntil: activeMembership.endDate.toISOString(),
-      },
+      memberName: member.user.name,
+      planName: activeMembership.plan.name,
+      validUntil: activeMembership.endDate.toISOString(),
       checkInTime: record.checkIn.toISOString(),
     });
   } catch (error) {
     console.error("[Access Verify Error]:", error);
-    return NextResponse.json({
-      status: "ACCESS_DENIED" as AccessStatus,
-      message: "Access verification service encountered an internal error.",
-      granted: false,
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        status: "ACCESS_DENIED" as AccessStatus,
+        message: "Access verification service encountered an internal error.",
+        granted: false,
+      },
+      { status: 500 }
+    );
   }
 }

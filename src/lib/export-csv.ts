@@ -16,8 +16,15 @@ export function exportToCsv<T>(filename: string, columns: CsvColumn<T>[], data: 
 
   const escapeCsvCell = (val: string | number | boolean | null | undefined): string => {
     if (val === null || val === undefined) return '""';
-    const str = String(val).replace(/"/g, '""');
-    return `"${str}"`;
+    let str = String(val);
+    
+    // Formula Injection Mitigation (Neutralize =, +, -, @, tab, CR triggers)
+    if (/^[=+\-@\t\r]/.test(str)) {
+      str = `'${str}`;
+    }
+
+    const escaped = str.replace(/"/g, '""');
+    return `"${escaped}"`;
   };
 
   const headerRow = columns.map((c) => escapeCsvCell(c.header)).join(",");

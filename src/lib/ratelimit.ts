@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import prisma from "@/lib/db";
 
 export type RateLimitResult = {
   success: boolean;
@@ -8,57 +9,54 @@ export type RateLimitResult = {
   retryAfterSeconds: number;
 };
 
-// In-Memory sliding-window store for local development and edge resilience
-const memoryStore = new Map<string, { count: number; expiresAt: number }>();
+// In-Memory fallback store for resilience when DB is temporarily unreachable
+const inMemoryStore = new Map<string, { count: number; expiresAt: number }>();
 
-// Periodic cleanup of expired rate limit buckets
+// Periodic in-memory cleanup
 if (typeof setInterval !== "undefined") {
   setInterval(() => {
     const now = Date.now();
-    for (const [key, val] of memoryStore.entries()) {
+    for (const [key, val] of inMemoryStore.entries()) {
       if (val.expiresAt < now) {
-        memoryStore.delete(key);
+        inMemoryStore.delete(key);
       }
     }
   }, 60_000);
 }
 
 /**
- * Extracts client IP from incoming Next.js request headers
+ * Extracts client IP securely from incoming trusted headers.
+ * Protects against IP spoofing by prioritizing platform-injected proxy headers.
  */
 export async function getClientIp(): Promise<string> {
   try {
     const headerList = await headers();
-    const forwarded = headerList.get("x-forwarded-for");
-    const realIp = headerList.get("x-real-ip");
+    // 1. Trusted Vercel Edge / Cloudflare / Nginx proxy headers
+    const vercelIp = headerList.get("x-vercel-proxied-for");
     const cfIp = headerList.get("cf-connecting-ip");
+    const realIp = headerList.get("x-real-ip");
+    const forwarded = headerList.get("x-forwarded-for");
 
-    if (forwarded) return forwarded.split(",")[0].trim();
-    if (realIp) return realIp.trim();
+    if (vercelIp) return vercelIp.split(",")[0].trim();
     if (cfIp) return cfIp.trim();
+    if (realIp) return realIp.trim();
+    if (forwarded) {
+      // Use the client IP (first entry in standard forward chain)
+      return forwarded.split(",")[0].trim();
+    }
   } catch {
-    // Fallback if called outside request context
+    // Fallback if invoked outside active request context
   }
   return "127.0.0.1";
 }
 
-// Owner Whitelist (Permanently exempt from IP rate limits and lockouts)
-const OWNER_WHITELIST = [
-  "prince@xyro.com",
-  "admin@xyro.fitness",
-  "prince",
-];
-
-export function isOwnerWhitelisted(identifier: string): boolean {
-  if (!identifier) return false;
-  const lower = identifier.toLowerCase();
-  return OWNER_WHITELIST.some((w) => lower.includes(w));
-}
-
 /**
- * Rate Limiter checking sliding window thresholds
- * @param identifier Unique key (e.g. `login:127.0.0.1:user@example.com`)
- * @param limit Max allowed attempts within the window
+ * Distributed, Persistent Rate Limiter (Horizontally Scalable on Vercel)
+ * Uses database-backed rate limit records with resilient sliding-window fallback.
+ * Uniform security: Applies to all users and administrators without exception.
+ *
+ * @param identifier Unique rate limit key (e.g. `login:192.168.1.1:admin@xyro.fitness`)
+ * @param limit Max allowed requests within window
  * @param windowSeconds Window duration in seconds
  */
 export async function checkRateLimit(
@@ -68,56 +66,102 @@ export async function checkRateLimit(
 ): Promise<RateLimitResult> {
   const now = Date.now();
   const windowMs = windowSeconds * 1000;
+  const expiresAt = new Date(now + windowMs);
 
-  // Platform Owner (Prince Gupta) is permanently exempt from all rate limits
-  if (isOwnerWhitelisted(identifier)) {
-    return {
-      success: true,
-      limit: 999999,
-      remaining: 999999,
-      reset: Math.ceil((now + windowMs) / 1000),
-      retryAfterSeconds: 0,
-    };
-  }
+  try {
+    // 1. Database-backed distributed atomic rate limit
+    const existing = await prisma.rateLimitRecord.findUnique({
+      where: { key: identifier },
+    });
 
-  const current = memoryStore.get(identifier);
+    if (!existing || existing.expiresAt.getTime() < now) {
+      // Create or reset bucket
+      await prisma.rateLimitRecord.upsert({
+        where: { key: identifier },
+        create: { key: identifier, count: 1, expiresAt },
+        update: { count: 1, expiresAt },
+      });
 
+      return {
+        success: true,
+        limit,
+        remaining: limit - 1,
+        reset: Math.ceil(expiresAt.getTime() / 1000),
+        retryAfterSeconds: 0,
+      };
+    }
 
-  if (!current || current.expiresAt < now) {
-    memoryStore.set(identifier, { count: 1, expiresAt: now + windowMs });
+    if (existing.count >= limit) {
+      const retryAfter = Math.max(1, Math.ceil((existing.expiresAt.getTime() - now) / 1000));
+      return {
+        success: false,
+        limit,
+        remaining: 0,
+        reset: Math.ceil(existing.expiresAt.getTime() / 1000),
+        retryAfterSeconds: retryAfter,
+      };
+    }
+
+    // Increment bucket
+    const updated = await prisma.rateLimitRecord.update({
+      where: { key: identifier },
+      data: { count: { increment: 1 } },
+    });
+
     return {
       success: true,
       limit,
-      remaining: limit - 1,
-      reset: Math.ceil((now + windowMs) / 1000),
+      remaining: Math.max(0, limit - updated.count),
+      reset: Math.ceil(existing.expiresAt.getTime() / 1000),
       retryAfterSeconds: 0,
     };
-  }
+  } catch {
+    // 2. In-Memory fallback if database connection is busy/offline
+    const current = inMemoryStore.get(identifier);
 
-  if (current.count >= limit) {
-    const retryAfter = Math.max(1, Math.ceil((current.expiresAt - now) / 1000));
+    if (!current || current.expiresAt < now) {
+      inMemoryStore.set(identifier, { count: 1, expiresAt: now + windowMs });
+      return {
+        success: true,
+        limit,
+        remaining: limit - 1,
+        reset: Math.ceil((now + windowMs) / 1000),
+        retryAfterSeconds: 0,
+      };
+    }
+
+    if (current.count >= limit) {
+      const retryAfter = Math.max(1, Math.ceil((current.expiresAt - now) / 1000));
+      return {
+        success: false,
+        limit,
+        remaining: 0,
+        reset: Math.ceil(current.expiresAt / 1000),
+        retryAfterSeconds: retryAfter,
+      };
+    }
+
+    current.count += 1;
     return {
-      success: false,
+      success: true,
       limit,
-      remaining: 0,
+      remaining: limit - current.count,
       reset: Math.ceil(current.expiresAt / 1000),
-      retryAfterSeconds: retryAfter,
+      retryAfterSeconds: 0,
     };
   }
-
-  current.count += 1;
-  return {
-    success: true,
-    limit,
-    remaining: limit - current.count,
-    reset: Math.ceil(current.expiresAt / 1000),
-    retryAfterSeconds: 0,
-  };
 }
 
 /**
- * Resets the rate limit bucket for an identifier (e.g. upon successful authentication)
+ * Resets rate limit for a specific identifier (e.g. after successful authentication)
  */
-export function resetRateLimit(identifier: string): void {
-  memoryStore.delete(identifier);
+export async function resetRateLimit(identifier: string): Promise<void> {
+  inMemoryStore.delete(identifier);
+  try {
+    await prisma.rateLimitRecord.delete({
+      where: { key: identifier },
+    });
+  } catch {
+    // Ignore if not found in DB
+  }
 }

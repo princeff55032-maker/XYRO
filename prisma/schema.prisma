@@ -164,6 +164,7 @@ model Gym {
   auditLogs        AuditLog[]
   notificationTemplates NotificationTemplate[]
   leads            Lead[]
+  accessDevices    AccessDevice[]
 
   @@index([ownerId])
 
@@ -918,4 +919,43 @@ model Lead {
   @@index([status])
   @@map("leads")
 }
+
+// ============================================
+// ACCESS CONTROL & HARDWARE DEVICES
+// ============================================
+
+model AccessDevice {
+  id          String    @id @default(cuid())
+  gymId       String
+  name        String    // e.g., "Front Turnstile Gate 1", "Reception Scanner"
+  apiKeyHash  String    @unique // SHA-256 hash of device secret API key
+  keyPrefix   String    // First 8 chars for identification e.g. "xyro_dev_..."
+  isActive    Boolean   @default(true)
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  gym Gym @relation(fields: [gymId], references: [id], onDelete: Cascade)
+
+  @@index([gymId])
+  @@index([apiKeyHash])
+  @@map("access_devices")
+}
+
+// ============================================
+// PERSISTENT DISTRIBUTED RATE LIMITING
+// ============================================
+
+model RateLimitRecord {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  count     Int      @default(1)
+  expiresAt DateTime
+
+  @@index([key])
+  @@index([expiresAt])
+  @@map("rate_limit_records")
+}
+
 

@@ -4,6 +4,21 @@ const { PrismaClient } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
 
 async function main() {
+  // Production Safeguard
+  const isProduction =
+    process.env.NODE_ENV === 'production' ||
+    process.env.DATABASE_URL?.includes('supabase.com') ||
+    process.env.DATABASE_URL?.includes('pooler.supabase.com');
+
+  if (isProduction && !process.argv.includes('--force-production-confirm-destructive-wipe')) {
+    console.error('======================================================');
+    console.error('⛔ FATAL SAFEGUARD TRIGGERED: PRODUCTION DATABASE DETECTED');
+    console.error('======================================================');
+    console.error('You are targeting a production database. To prevent accidental data loss,');
+    console.error('you must explicitly pass: --force-production-confirm-destructive-wipe');
+    process.exit(1);
+  }
+
   const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
   const prisma = new PrismaClient({ adapter });
 
@@ -21,6 +36,8 @@ async function main() {
   await prisma.whatsAppLog.deleteMany({});
   await prisma.whatsAppSettings.deleteMany({});
   await prisma.notificationTemplate.deleteMany({});
+  await prisma.accessDevice.deleteMany({});
+  await prisma.lead.deleteMany({});
   await prisma.expense.deleteMany({});
   await prisma.equipment.deleteMany({});
   await prisma.classBooking.deleteMany({});
@@ -47,49 +64,34 @@ async function main() {
 
   console.log('  ✓ All previous users, gyms, members, trainers, and logs erased.');
 
-  // 2. Create only ONE Super Admin account
+  const adminEmail = process.env.ADMIN_EMAIL || process.argv[2];
+  const adminPassword = process.env.ADMIN_PASSWORD || process.argv[3];
+
+  if (!adminEmail || !adminPassword) {
+    console.log('\n⚠️ No ADMIN_EMAIL or ADMIN_PASSWORD specified. Skipping admin account creation.');
+    await prisma.$disconnect();
+    return;
+  }
+
   console.log('\n2. Creating single Super Admin account...');
-  const adminEmail = 'prince@xyro.com';
-  const adminPassword = 'XyroAdmin#2026!';
   const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
   const superAdmin = await prisma.user.create({
     data: {
-      email: adminEmail,
-      name: 'Prince Gupta',
+      email: adminEmail.toLowerCase().trim(),
+      name: process.env.ADMIN_NAME || 'Platform Administrator',
       password: hashedPassword,
       role: 'SUPER_ADMIN',
       status: 'ACTIVE',
       emailVerified: new Date(),
-      forcePasswordChange: false,
     },
   });
 
-  // Verify counts
-  const userCount = await prisma.user.count();
-  const gymCount = await prisma.gym.count();
-  const memberCount = await prisma.member.count();
-  const trainerCount = await prisma.trainer.count();
-
-  console.log('\n======================================================');
-  console.log('  CLEAN RESET COMPLETED SUCCESSFULLY');
-  console.log('======================================================');
-  console.log(`  Total Users in DB:    ${userCount}`);
-  console.log(`  Total Gyms in DB:     ${gymCount}`);
-  console.log(`  Total Members in DB:  ${memberCount}`);
-  console.log(`  Total Trainers in DB: ${trainerCount}`);
-  console.log('------------------------------------------------------');
-  console.log('  SUPER ADMIN CREDENTIALS:');
-  console.log(`  Email:    ${superAdmin.email}`);
-  console.log(`  Password: ${adminPassword}`);
-  console.log(`  Role:     ${superAdmin.role}`);
-  console.log(`  URL:      http://localhost:3000/login`);
-  console.log('======================================================\n');
-
+  console.log(`  ✓ Super Admin created: ${superAdmin.email}`);
   await prisma.$disconnect();
 }
 
 main().catch((e) => {
-  console.error('Error during clean database reset:', e);
+  console.error(e);
   process.exit(1);
 });

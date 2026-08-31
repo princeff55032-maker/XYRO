@@ -108,12 +108,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           throw new Error("Your account has been deactivated");
         }
 
-        // 3. Check Database Temporary Lockout (Exempt Super Admin / Prince Gupta)
-        const isOwner = user.role === "SUPER_ADMIN" || user.email.toLowerCase() === "prince@xyro.com";
-
-        if (!isOwner && user.lockedUntil && user.lockedUntil > new Date()) {
+        // 3. Check Database Temporary Lockout (Uniform security across all roles)
+        if (user.lockedUntil && user.lockedUntil > new Date()) {
           const remainingMinutes = Math.max(1, Math.ceil((user.lockedUntil.getTime() - Date.now()) / (60 * 1000)));
-          throw new Error(`Account temporarily locked. Please try again in ${remainingMinutes} minutes.`);
+          throw new Error(`Account temporarily locked due to failed attempts. Please try again in ${remainingMinutes} minutes.`);
         }
 
         const isValid = await bcrypt.compare(
@@ -122,28 +120,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         );
 
         if (!isValid) {
-          if (!isOwner) {
-            const nextAttempts = (user.loginAttempts || 0) + 1;
-            const isLocked = nextAttempts >= 5;
+          const nextAttempts = (user.loginAttempts || 0) + 1;
+          const isLocked = nextAttempts >= 5;
 
-            // Increment login attempts & trigger 15-minute temporary lockout
-            await prisma.user.update({
-              where: { id: user.id },
-              data: {
-                loginAttempts: nextAttempts,
-                ...(isLocked ? { lockedUntil: new Date(Date.now() + 15 * 60 * 1000) } : {}),
-              },
-            });
+          // Increment login attempts & trigger 15-minute temporary lockout
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              loginAttempts: nextAttempts,
+              ...(isLocked ? { lockedUntil: new Date(Date.now() + 15 * 60 * 1000) } : {}),
+            },
+          });
 
-            if (isLocked) {
-              throw new Error("5 failed attempts. Account temporarily locked for 15 minutes.");
-            }
-
-            const attemptsRemaining = Math.max(0, 5 - nextAttempts);
-            throw new Error(`Invalid login credentials. ${attemptsRemaining} attempt${attemptsRemaining === 1 ? "" : "s"} remaining.`);
-          } else {
-            throw new Error("Invalid login credentials.");
+          if (isLocked) {
+            throw new Error("5 failed attempts. Account temporarily locked for 15 minutes.");
           }
+
+          const attemptsRemaining = Math.max(0, 5 - nextAttempts);
+          throw new Error(`Invalid login credentials. ${attemptsRemaining} attempt${attemptsRemaining === 1 ? "" : "s"} remaining.`);
         }
 
 
@@ -193,9 +187,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }) {
       if (account?.provider === "google") {
         if (!user.email) return false;
+
+        // Ensure email is verified by Google
+        if (profile && (profile as any).email_verified === false) {
+          console.warn("[OAuth Security]: Blocked login with unverified Google email.");
+          return false;
+        }
 
         const cleanEmail = user.email.toLowerCase();
         let dbUser = await prisma.user.findUnique({
@@ -215,6 +215,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               image: user.image,
               role: "GYM_OWNER",
               status: "ACTIVE",
+              emailVerified: new Date(),
             },
             include: {
               ownedGyms: { select: { id: true, gymCode: true }, take: 1 },
@@ -223,7 +224,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           });
         }
 
-        if (dbUser.status === "SUSPENDED" || dbUser.status === "DEACTIVATED") {
+        if (dbUser.status === "SUSPENDED" || dbUser.status === "DEACTIVATED" || dbUser.deletedAt) {
           return false;
         }
 
@@ -243,12 +244,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.memberId = user.memberId;
       }
 
-      // Re-hydrate gym association if not present in token
-      if (token.sub && !token.gymId) {
+      // Re-hydrate and re-validate user account status from database
+      if (token.sub) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.sub },
           select: {
             role: true,
+            status: true,
+            deletedAt: true,
             ownedGyms: { select: { id: true, gymCode: true }, take: 1 },
             gymStaff: { select: { gymId: true, gym: { select: { gymCode: true } } }, take: 1 },
             trainer: { select: { gymId: true, gym: { select: { gymCode: true } } } },
@@ -256,22 +259,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           },
         });
 
-        if (dbUser) {
-          token.role = dbUser.role;
-          token.gymId =
-            dbUser.ownedGyms[0]?.id ||
-            dbUser.gymStaff[0]?.gymId ||
-            dbUser.trainer?.gymId ||
-            dbUser.member?.gymId ||
-            null;
-          token.gymCode =
-            dbUser.ownedGyms[0]?.gymCode ||
-            dbUser.gymStaff[0]?.gym?.gymCode ||
-            dbUser.trainer?.gym?.gymCode ||
-            dbUser.member?.gym?.gymCode ||
-            null;
-          token.memberId = dbUser.member?.memberId || null;
+        // If user was deleted or suspended, clear token to invalidate session immediately
+        if (!dbUser || dbUser.status !== "ACTIVE" || dbUser.deletedAt) {
+          return {};
         }
+
+        token.role = dbUser.role;
+        token.gymId =
+          dbUser.ownedGyms[0]?.id ||
+          dbUser.gymStaff[0]?.gymId ||
+          dbUser.trainer?.gymId ||
+          dbUser.member?.gymId ||
+          null;
+        token.gymCode =
+          dbUser.ownedGyms[0]?.gymCode ||
+          dbUser.gymStaff[0]?.gym?.gymCode ||
+          dbUser.trainer?.gym?.gymCode ||
+          dbUser.member?.gym?.gymCode ||
+          null;
+        token.memberId = dbUser.member?.memberId || null;
       }
 
       return token;

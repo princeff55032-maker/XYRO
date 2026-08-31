@@ -160,9 +160,51 @@ export async function requireWorkspaceAuth(
     throw new Error("Workspace not found or deactivated");
   }
 
-  // Ensure user is authorized for this specific gym
-  if (dbUser.role === "GYM_OWNER" && gym.ownerId !== dbUser.id) {
-    throw new Error("Forbidden: You are not the owner of this workspace");
+  // Ensure user is strictly authorized for this specific gym with an ACTIVE relationship
+  if (dbUser.role === "SUPER_ADMIN") {
+    // Super admin is granted access
+  } else if (dbUser.role === "GYM_OWNER") {
+    if (gym.ownerId !== dbUser.id) {
+      throw new Error("Forbidden: You are not the owner of this workspace.");
+    }
+  } else if (dbUser.role === "GYM_ADMIN" || dbUser.role === "RECEPTIONIST") {
+    const activeStaff = await prisma.gymStaff.findFirst({
+      where: {
+        gymId: gym.id,
+        userId: dbUser.id,
+        isActive: true,
+        deletedAt: null,
+      },
+    });
+    if (!activeStaff) {
+      throw new Error("Forbidden: Your staff access for this facility has been revoked or deactivated.");
+    }
+  } else if (dbUser.role === "TRAINER") {
+    const activeTrainer = await prisma.trainer.findFirst({
+      where: {
+        gymId: gym.id,
+        userId: dbUser.id,
+        isActive: true,
+        deletedAt: null,
+      },
+    });
+    if (!activeTrainer) {
+      throw new Error("Forbidden: Your trainer profile for this facility is inactive or has been revoked.");
+    }
+  } else if (dbUser.role === "CUSTOMER") {
+    const activeMember = await prisma.member.findFirst({
+      where: {
+        gymId: gym.id,
+        userId: dbUser.id,
+        isActive: true,
+        deletedAt: null,
+      },
+    });
+    if (!activeMember) {
+      throw new Error("Forbidden: Your member account for this facility is inactive or not found.");
+    }
+  } else {
+    throw new Error(`Forbidden: Unrecognized role '${dbUser.role}'`);
   }
 
   return { session, user: dbUser, gym };

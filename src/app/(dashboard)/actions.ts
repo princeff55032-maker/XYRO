@@ -19,6 +19,7 @@ import {
   assertPlanFeature,
   getGymSubscription,
 } from "@/lib/subscriptions";
+import { createDeviceApiKey } from "@/lib/device-auth";
 
 export type ActionResult<T = unknown> = {
   ok: boolean;
@@ -1651,4 +1652,261 @@ export async function convertLeadToMemberAction(input: {
     return { ok: false, error: message(e) };
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Access Control & Scanner Devices                                   */
+/* ------------------------------------------------------------------ */
+
+export type AccessDeviceResult = {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  isActive: boolean;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+};
+
+export async function createAccessDeviceAction(
+  name: string
+): Promise<ActionResult<{ apiKey: string; keyPrefix: string; device: AccessDeviceResult }>> {
+  try {
+    const ctx = await requireWorkspaceAuth(
+      ["GYM_OWNER", "GYM_ADMIN", "SUPER_ADMIN"],
+      { requireEmailVerified: true }
+    );
+    requirePermission(ctx, "access_control.manage");
+
+    if (!name || !name.trim()) {
+      return { ok: false, error: "Device name is required (e.g. 'Turnstile Gate 1')." };
+    }
+
+    const { apiKey, keyPrefix, device } = await createDeviceApiKey({
+      gymId: ctx.gym.id,
+      name: name.trim(),
+    });
+
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "ACCESS_DEVICE_CREATE",
+      resource: "access_device",
+      resourceId: device.id,
+      metadata: { name: device.name, keyPrefix },
+    });
+
+    return {
+      ok: true,
+      data: {
+        apiKey,
+        keyPrefix,
+        device: {
+          id: device.id,
+          name: device.name,
+          keyPrefix: device.keyPrefix,
+          isActive: device.isActive,
+          lastUsedAt: device.lastUsedAt ? device.lastUsedAt.toISOString() : null,
+          revokedAt: device.revokedAt ? device.revokedAt.toISOString() : null,
+          createdAt: device.createdAt.toISOString(),
+        },
+      },
+    };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
+}
+
+export async function revokeAccessDeviceAction(deviceId: string): Promise<ActionResult> {
+  try {
+    const ctx = await requireWorkspaceAuth(
+      ["GYM_OWNER", "GYM_ADMIN", "SUPER_ADMIN"],
+      { requireEmailVerified: true }
+    );
+    requirePermission(ctx, "access_control.manage");
+
+    const device = await prisma.accessDevice.findFirst({
+      where: { id: deviceId, gymId: ctx.gym.id },
+    });
+
+    if (!device) {
+      return { ok: false, error: "Access device not found." };
+    }
+
+    await prisma.accessDevice.update({
+      where: { id: deviceId },
+      data: {
+        isActive: false,
+        revokedAt: new Date(),
+      },
+    });
+
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "ACCESS_DEVICE_REVOKE",
+      resource: "access_device",
+      resourceId: deviceId,
+      metadata: { name: device.name },
+    });
+
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
+}
+
+export async function listAccessDevicesAction(): Promise<ActionResult<AccessDeviceResult[]>> {
+  try {
+    const ctx = await requireWorkspaceAuth(
+      ["GYM_OWNER", "GYM_ADMIN", "SUPER_ADMIN"],
+      { requireEmailVerified: false }
+    );
+    requirePermission(ctx, "access_control.manage");
+
+    const devices = await prisma.accessDevice.findMany({
+      where: { gymId: ctx.gym.id },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return {
+      ok: true,
+      data: devices.map((d) => ({
+        id: d.id,
+        name: d.name,
+        keyPrefix: d.keyPrefix,
+        isActive: d.isActive,
+        lastUsedAt: d.lastUsedAt ? d.lastUsedAt.toISOString() : null,
+        revokedAt: d.revokedAt ? d.revokedAt.toISOString() : null,
+        createdAt: d.createdAt.toISOString(),
+      })),
+    };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Secure Data Export                                                 */
+/* ------------------------------------------------------------------ */
+
+export type ExportResourceType = "members" | "payments" | "attendance" | "trainers";
+
+export async function exportTenantDataAction(
+  resource: ExportResourceType
+): Promise<ActionResult<{ filename: string; rows: Record<string, unknown>[] }>> {
+  try {
+    const ctx = await requireWorkspaceAuth(
+      ["GYM_OWNER", "GYM_ADMIN", "SUPER_ADMIN"],
+      { requireEmailVerified: true }
+    );
+    requirePermission(ctx, "exports.manage");
+
+    // Rate Limit: 10 exports per 15 minutes per user
+    const rl = await import("@/lib/ratelimit").then((m) =>
+      m.checkRateLimit(`export:${ctx.user.id}`, 10, 15 * 60)
+    );
+    if (!rl.success) {
+      return {
+        ok: false,
+        error: `Export rate limit reached. Please wait ${Math.ceil(rl.retryAfterSeconds / 60)} minutes before exporting again.`,
+      };
+    }
+
+    let rows: Record<string, unknown>[] = [];
+    const dateStr = new Date().toISOString().split("T")[0];
+
+    if (resource === "members") {
+      const members = await prisma.member.findMany({
+        where: { gymId: ctx.gym.id, deletedAt: null },
+        include: {
+          user: { select: { name: true, email: true, phone: true } },
+          memberships: {
+            where: { status: "ACTIVE" },
+            include: { plan: { select: { name: true } } },
+            take: 1,
+          },
+        },
+        orderBy: { joinDate: "desc" },
+      });
+
+      rows = members.map((m) => ({
+        "Member ID": m.memberId,
+        "Name": m.user.name,
+        "Phone": m.user.phone || "",
+        "Email": m.user.email,
+        "Status": m.isActive ? "Active" : "Inactive",
+        "Plan": m.memberships[0]?.plan?.name || "None",
+        "Join Date": m.joinDate.toISOString().split("T")[0],
+      }));
+    } else if (resource === "payments") {
+      const payments = await prisma.payment.findMany({
+        where: { gymId: ctx.gym.id },
+        include: {
+          member: { include: { user: { select: { name: true } } } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 1000,
+      });
+
+      rows = payments.map((p) => ({
+        "Payment ID": p.id,
+        "Member": p.member.user.name,
+        "Amount": p.totalAmount,
+        "Status": p.status,
+        "Method": p.method,
+        "Date": p.createdAt.toISOString().split("T")[0],
+      }));
+    } else if (resource === "attendance") {
+      const logs = await prisma.attendance.findMany({
+        where: { gymId: ctx.gym.id },
+        include: {
+          member: { include: { user: { select: { name: true } } } },
+        },
+        orderBy: { checkIn: "desc" },
+        take: 1000,
+      });
+
+      rows = logs.map((l) => ({
+        "Member": l.member.user.name,
+        "Date": l.date.toISOString().split("T")[0],
+        "Check-In Time": l.checkIn.toLocaleTimeString(),
+        "Method": l.method,
+      }));
+    } else if (resource === "trainers") {
+      const trainers = await prisma.trainer.findMany({
+        where: { gymId: ctx.gym.id, deletedAt: null },
+        include: {
+          user: { select: { name: true, email: true, phone: true } },
+        },
+      });
+
+      rows = trainers.map((t) => ({
+        "Trainer Name": t.user.name,
+        "Email": t.user.email,
+        "Phone": t.user.phone || "",
+        "Specialization": t.specialization || "General Trainer",
+        "Status": t.isActive ? "Active" : "Inactive",
+      }));
+    }
+
+    await logAuditEvent({
+      userId: ctx.user.id,
+      gymId: ctx.gym.id,
+      action: "DATA_EXPORT_GENERATED",
+      resource: `export_${resource}`,
+      metadata: { recordCount: rows.length },
+    });
+
+    return {
+      ok: true,
+      data: {
+        filename: `${ctx.gym.slug}_${resource}_${dateStr}`,
+        rows,
+      },
+    };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
+}
+
 
