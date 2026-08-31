@@ -35,10 +35,10 @@ export default async function TrainerPortalLayout({
             <div className="hidden h-5 w-px bg-[#E5D9C5] sm:block" />
             <div className="hidden items-center gap-2 sm:flex">
               <span className="text-xs font-bold text-[#33281E]">
-                {trainer?.gym.name ?? "Trainer Portal"}
+                {trainer?.gym?.name || "Trainer Portal"}
               </span>
               <span className="rounded-md bg-[#F3EFEA] px-2 py-0.5 font-mono text-[10px] font-medium text-[#8C7A6B]">
-                {trainer?.gym.gymCode} · Coach
+                {trainer?.gym?.gymCode || "XYRO-001"} · Coach
               </span>
             </div>
           </div>
@@ -46,7 +46,7 @@ export default async function TrainerPortalLayout({
           <MemberNav
             userName={session.user.name ?? "Coach"}
             userEmail={session.user.email}
-            gymName={`${trainer?.gym.name ?? "Gym"} · Trainer`}
+            gymName={`${trainer?.gym?.name || "Gym"} · Trainer`}
           />
         </div>
       </header>

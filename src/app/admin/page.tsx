@@ -165,7 +165,7 @@ export default async function SuperAdminPage() {
     const daysSinceLastPayment = lastPaymentDate
       ? Math.floor((now.getTime() - lastPaymentDate.getTime()) / 86400000)
       : 999;
-    const daysSinceOwnerLogin = g.owner.lastLoginAt
+    const daysSinceOwnerLogin = g.owner?.lastLoginAt
       ? Math.floor(
           (now.getTime() - g.owner.lastLoginAt.getTime()) / 86400000
         )

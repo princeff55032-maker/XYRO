@@ -99,11 +99,10 @@ export default function RegisterPage() {
       redirect: false,
     });
     if (res?.error) {
-      router.push("/login");
+      window.location.href = "/login";
       return;
     }
-    router.push("/dashboard");
-    router.refresh();
+    window.location.href = "/dashboard";
   }
 
   return (

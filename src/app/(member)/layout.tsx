@@ -37,18 +37,18 @@ export default async function MemberPortalLayout({
             <div className="hidden h-5 w-px bg-[#E5D9C5] sm:block" />
             <div className="hidden items-center gap-2 sm:flex">
               <span className="text-xs font-bold text-[#33281E]">
-                {member?.gym.name ?? "Member Portal"}
+                {member?.gym?.name || "Member Portal"}
               </span>
               <span className="rounded-md bg-[#F3EFEA] px-2 py-0.5 font-mono text-[10px] font-medium text-[#8C7A6B]">
-                {member?.gym.gymCode}
+                {member?.gym?.gymCode || "XYRO-001"}
               </span>
             </div>
           </div>
 
           <MemberNav
-            userName={session.user.name ?? "Member"}
+            userName={session.user.name || member?.user?.name || "Member"}
             userEmail={session.user.email}
-            gymName={member?.gym.name}
+            gymName={member?.gym?.name || "XYRO Gym"}
           />
         </div>
       </header>

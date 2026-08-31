@@ -76,8 +76,7 @@ function LoginForm() {
         }
       }
 
-      router.push(targetUrl);
-      router.refresh();
+      window.location.href = targetUrl;
     } catch {
       setError("Something went wrong. Please try again.");
       setLoading(false);

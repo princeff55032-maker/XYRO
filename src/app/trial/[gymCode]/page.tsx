@@ -9,8 +9,9 @@ export async function generateMetadata({
   params: Promise<{ gymCode: string }>;
 }) {
   const { gymCode } = await params;
+  const code = (gymCode || "").toUpperCase();
   const gym = await prisma.gym.findUnique({
-    where: { gymCode: gymCode.toUpperCase() },
+    where: { gymCode: code },
     select: { name: true },
   });
 
@@ -26,10 +27,9 @@ export default async function PublicTrialPage({
 }: {
   params: Promise<{ gymCode: string }>;
 }) {
-  const { gymCode } = await params;
-
+  const code = (gymCode || "").toUpperCase();
   const gym = await prisma.gym.findUnique({
-    where: { gymCode: gymCode.toUpperCase() },
+    where: { gymCode: code },
     select: {
       id: true,
       name: true,
