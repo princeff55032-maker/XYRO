@@ -43,32 +43,43 @@ export default async function WorkoutsPage() {
     );
   }
 
-  const [workouts, diets, members] = await Promise.all([
-    prisma.workoutPlan.findMany({
-      where: { gymId, isActive: true },
-      include: {
-        member: { include: { user: { select: { name: true } } } },
-        trainer: { include: { user: { select: { name: true } } } },
-        _count: { select: { exercises: true } },
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 20,
-    }),
-    prisma.dietPlan.findMany({
-      where: { gymId, isActive: true },
-      include: {
-        member: { include: { user: { select: { name: true } } } },
-        _count: { select: { meals: true } },
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 20,
-    }),
-    prisma.member.findMany({
-      where: { gymId, isActive: true },
-      include: { user: { select: { name: true } } },
-      orderBy: { createdAt: "desc" },
-    }),
-  ]);
+  let workouts: any[] = [];
+  let diets: any[] = [];
+  let members: any[] = [];
+
+  try {
+    const results = await Promise.all([
+      prisma.workoutPlan.findMany({
+        where: { gymId, isActive: true },
+        include: {
+          member: { include: { user: { select: { name: true } } } },
+          trainer: { include: { user: { select: { name: true } } } },
+          _count: { select: { exercises: true } },
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 20,
+      }),
+      prisma.dietPlan.findMany({
+        where: { gymId, isActive: true },
+        include: {
+          member: { include: { user: { select: { name: true } } } },
+          _count: { select: { meals: true } },
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 20,
+      }),
+      prisma.member.findMany({
+        where: { gymId, isActive: true },
+        include: { user: { select: { name: true } } },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
+    workouts = results[0];
+    diets = results[1];
+    members = results[2];
+  } catch (err) {
+    console.error("[WorkoutsPage Fetch Error]:", err);
+  }
 
   const memberOptions = members.map((m) => ({ id: m.id, label: m.user?.name || "Member" }));
 

@@ -15,27 +15,39 @@ export default async function MembersPage() {
   const session = await requireTenant();
   const gymId = session.user.gymId!;
 
-  const [{ config }, members, plans] = await Promise.all([
-    getGymSubscription(gymId),
-    prisma.member.findMany({
-      where: { gymId, deletedAt: null },
-      include: {
-        user: { select: { name: true, email: true, phone: true } },
-        memberships: {
-          include: { plan: { select: { id: true, name: true, price: true, durationDays: true } } },
-          orderBy: { endDate: "desc" },
-          take: 1,
+  let config: any = { maxMembers: 50, badge: "FREE" };
+  let members: any[] = [];
+  let plans: any[] = [];
+
+  try {
+    const subRes = await getGymSubscription(gymId);
+    config = subRes.config;
+
+    const results = await Promise.all([
+      prisma.member.findMany({
+        where: { gymId, deletedAt: null },
+        include: {
+          user: { select: { name: true, email: true, phone: true } },
+          memberships: {
+            include: { plan: { select: { id: true, name: true, price: true, durationDays: true } } },
+            orderBy: { endDate: "desc" },
+            take: 1,
+          },
+          assignedTrainer: { include: { user: { select: { name: true } } } },
         },
-        assignedTrainer: { include: { user: { select: { name: true } } } },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.membershipPlan.findMany({
-      where: { gymId, deletedAt: null, isActive: true },
-      select: { id: true, name: true, price: true, durationDays: true },
-      orderBy: { sortOrder: "asc" },
-    }),
-  ]);
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.membershipPlan.findMany({
+        where: { gymId, deletedAt: null, isActive: true },
+        select: { id: true, name: true, price: true, durationDays: true },
+        orderBy: { sortOrder: "asc" },
+      }),
+    ]);
+    members = results[0];
+    plans = results[1];
+  } catch (err) {
+    console.error("[MembersPage Fetch Error]:", err);
+  }
 
   return (
     <div className="space-y-6">

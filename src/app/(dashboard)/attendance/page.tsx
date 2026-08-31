@@ -16,33 +16,44 @@ export default async function AttendancePage() {
   dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(dayStart.getTime() + 86400000);
 
-  const [today, members, thisWeek] = await Promise.all([
-    prisma.attendance.findMany({
-      where: { gymId, date: { gte: dayStart, lt: dayEnd } },
-      include: {
-        member: { include: { user: { select: { name: true } } } },
-      },
-      orderBy: { checkIn: "desc" },
-    }),
-    prisma.member.findMany({
-      where: { gymId, isActive: true },
-      include: { user: { select: { name: true } } },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.attendance.groupBy({
-      by: ["date"],
-      where: {
-        gymId,
-        date: { gte: new Date(Date.now() - 6 * 86400000) },
-      },
-      _count: true,
-      orderBy: { date: "desc" },
-    }),
-  ]);
+  let today: any[] = [];
+  let members: any[] = [];
+  let thisWeek: any[] = [];
+
+  try {
+    const results = await Promise.all([
+      prisma.attendance.findMany({
+        where: { gymId, date: { gte: dayStart, lt: dayEnd } },
+        include: {
+          member: { include: { user: { select: { name: true } } } },
+        },
+        orderBy: { checkIn: "desc" },
+      }),
+      prisma.member.findMany({
+        where: { gymId, isActive: true },
+        include: { user: { select: { name: true } } },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.attendance.groupBy({
+        by: ["date"],
+        where: {
+          gymId,
+          date: { gte: new Date(Date.now() - 6 * 86400000) },
+        },
+        _count: true,
+        orderBy: { date: "desc" },
+      }),
+    ]);
+    today = results[0];
+    members = results[1];
+    thisWeek = results[2];
+  } catch (err) {
+    console.error("[AttendancePage Fetch Error]:", err);
+  }
 
   const memberOptions = members.map((m) => ({ id: m.id, label: `${m.user?.name || "Member"} (${m.memberId})` }));
 
-  const totalThisWeek = thisWeek.reduce((a, r) => a + r._count, 0);
+  const totalThisWeek = thisWeek.reduce((a, r) => a + (r._count || 0), 0);
 
   return (
     <div className="space-y-6">

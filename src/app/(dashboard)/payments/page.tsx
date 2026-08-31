@@ -11,28 +11,41 @@ export default async function PaymentsPage() {
   const session = await requireTenant();
   const gymId = session.user.gymId!;
 
-  const [payments, members, plans, totals] = await Promise.all([
-    prisma.payment.findMany({
-      where: { gymId },
-      include: { member: { include: { user: { select: { name: true } } } } },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    }),
-    prisma.member.findMany({
-      where: { gymId, isActive: true },
-      include: { user: { select: { name: true } } },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.membershipPlan.findMany({
-      where: { gymId, deletedAt: null, isActive: true },
-      select: { id: true, name: true },
-    }),
-    prisma.payment.aggregate({
-      where: { gymId, status: "PAID" },
-      _sum: { totalAmount: true },
-      _count: true,
-    }),
-  ]);
+  let payments: any[] = [];
+  let members: any[] = [];
+  let plans: any[] = [];
+  let totals: any = null;
+
+  try {
+    const results = await Promise.all([
+      prisma.payment.findMany({
+        where: { gymId },
+        include: { member: { include: { user: { select: { name: true } } } } },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      }),
+      prisma.member.findMany({
+        where: { gymId, isActive: true },
+        include: { user: { select: { name: true } } },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.membershipPlan.findMany({
+        where: { gymId, deletedAt: null, isActive: true },
+        select: { id: true, name: true },
+      }),
+      prisma.payment.aggregate({
+        where: { gymId, status: "PAID" },
+        _sum: { totalAmount: true },
+        _count: true,
+      }),
+    ]);
+    payments = results[0];
+    members = results[1];
+    plans = results[2];
+    totals = results[3];
+  } catch (err) {
+    console.error("[PaymentsPage Fetch Error]:", err);
+  }
 
   const memberOptions = members.map((m) => ({
     id: m.id,

@@ -12,34 +12,46 @@ export default async function TrainersPage() {
   const session = await requireTenant();
   const gymId = session.user.gymId!;
 
-  const [{ config }, trainers, rawMembers] = await Promise.all([
-    getGymSubscription(gymId),
-    prisma.trainer.findMany({
-      where: { gymId, deletedAt: null },
-      include: {
-        user: { select: { name: true, email: true, phone: true } },
-        _count: { select: { members: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.member.findMany({
-      where: { gymId, deletedAt: null },
-      include: {
-        user: { select: { name: true, email: true, phone: true } },
-        assignedTrainer: {
-          include: {
-            user: { select: { name: true } },
+  let config: any = { maxTrainers: 10, badge: "PRO" };
+  let trainers: any[] = [];
+  let rawMembers: any[] = [];
+
+  try {
+    const subRes = await getGymSubscription(gymId);
+    config = subRes.config;
+
+    const results = await Promise.all([
+      prisma.trainer.findMany({
+        where: { gymId, deletedAt: null },
+        include: {
+          user: { select: { name: true, email: true, phone: true } },
+          _count: { select: { members: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.member.findMany({
+        where: { gymId, deletedAt: null },
+        include: {
+          user: { select: { name: true, email: true, phone: true } },
+          assignedTrainer: {
+            include: {
+              user: { select: { name: true } },
+            },
+          },
+          memberships: {
+            where: { status: "ACTIVE" },
+            include: { plan: { select: { name: true } } },
+            take: 1,
           },
         },
-        memberships: {
-          where: { status: "ACTIVE" },
-          include: { plan: { select: { name: true } } },
-          take: 1,
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-  ]);
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
+    trainers = results[0];
+    rawMembers = results[1];
+  } catch (err) {
+    console.error("[TrainersPage Fetch Error]:", err);
+  }
 
   const allMembers: GymMemberSummary[] = rawMembers.map((m) => ({
     id: m.id,
@@ -49,7 +61,7 @@ export default async function TrainersPage() {
     phone: m.user?.phone || null,
     assignedTrainerId: m.trainerId,
     assignedTrainerName: m.assignedTrainer?.user?.name || null,
-    planName: m.memberships[0]?.plan?.name || null,
+    planName: m.memberships?.[0]?.plan?.name || null,
   }));
 
   return (

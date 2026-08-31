@@ -39,21 +39,30 @@ export default async function ClassesPage() {
     );
   }
 
-  const [classes, trainers] = await Promise.all([
-    prisma.gymClass.findMany({
-      where: { gymId, isActive: true },
-      include: {
-        trainer: { select: { user: { select: { name: true } } } },
-        _count: { select: { bookings: true } },
-      },
-      orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
-    }),
-    prisma.trainer.findMany({
-      where: { gymId, deletedAt: null, isActive: true },
-      include: { user: { select: { name: true } } },
-      orderBy: { createdAt: "desc" },
-    }),
-  ]);
+  let classes: any[] = [];
+  let trainers: any[] = [];
+
+  try {
+    const results = await Promise.all([
+      prisma.gymClass.findMany({
+        where: { gymId, isActive: true },
+        include: {
+          trainer: { select: { user: { select: { name: true } } } },
+          _count: { select: { bookings: true } },
+        },
+        orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
+      }),
+      prisma.trainer.findMany({
+        where: { gymId, deletedAt: null, isActive: true },
+        include: { user: { select: { name: true } } },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
+    classes = results[0];
+    trainers = results[1];
+  } catch (err) {
+    console.error("[ClassesPage Fetch Error]:", err);
+  }
 
   const trainerOptions = trainers.map((t) => ({
     id: t.id,

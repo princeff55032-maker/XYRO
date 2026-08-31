@@ -10,8 +10,15 @@ export default async function SettingsPage() {
   const session = await requireTenant();
   const gymId = session.user.gymId!;
 
-  const [gym, staff, totalMembers, totalTrainers, totalPlans, auditLogs] =
-    await Promise.all([
+  let gym: any = null;
+  let staff: any[] = [];
+  let totalMembers = 0;
+  let totalTrainers = 0;
+  let totalPlans = 0;
+  let auditLogs: any[] = [];
+
+  try {
+    const results = await Promise.all([
       prisma.gym.findUnique({
         where: { id: gymId },
         include: {
@@ -66,6 +73,16 @@ export default async function SettingsPage() {
         take: 50,
       }),
     ]);
+
+    gym = results[0];
+    staff = results[1];
+    totalMembers = results[2];
+    totalTrainers = results[3];
+    totalPlans = results[4];
+    auditLogs = results[5];
+  } catch (err) {
+    console.error("[SettingsPage Fetch Error]:", err);
+  }
 
   if (!gym) {
     return (

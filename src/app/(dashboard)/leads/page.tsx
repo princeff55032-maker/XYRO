@@ -8,20 +8,31 @@ export default async function LeadsPage() {
   const session = await requireTenant();
   const gymId = session.user.gymId!;
 
-  const [gym, leads, plans] = await Promise.all([
-    prisma.gym.findUnique({
-      where: { id: gymId },
-      select: { gymCode: true, name: true },
-    }),
-    prisma.lead.findMany({
-      where: { gymId },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.membershipPlan.findMany({
-      where: { gymId, deletedAt: null, isActive: true },
-      select: { id: true, name: true },
-    }),
-  ]);
+  let gym: any = null;
+  let leads: any[] = [];
+  let plans: any[] = [];
+
+  try {
+    const results = await Promise.all([
+      prisma.gym.findUnique({
+        where: { id: gymId },
+        select: { gymCode: true, name: true },
+      }),
+      prisma.lead.findMany({
+        where: { gymId },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.membershipPlan.findMany({
+        where: { gymId, deletedAt: null, isActive: true },
+        select: { id: true, name: true },
+      }),
+    ]);
+    gym = results[0];
+    leads = results[1];
+    plans = results[2];
+  } catch (err) {
+    console.error("[LeadsPage Fetch Error]:", err);
+  }
 
   const gymCode = gym?.gymCode || session.user.gymCode || "XYRO-001";
 

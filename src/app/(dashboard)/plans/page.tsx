@@ -11,11 +11,16 @@ export default async function PlansPage() {
   const session = await requireTenant();
   const gymId = session.user.gymId!;
 
-  const plans = await prisma.membershipPlan.findMany({
-    where: { gymId, deletedAt: null },
-    include: { _count: { select: { memberships: true } } },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
-  });
+  let plans: any[] = [];
+  try {
+    plans = await prisma.membershipPlan.findMany({
+      where: { gymId, deletedAt: null },
+      include: { _count: { select: { memberships: true } } },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+    });
+  } catch (err) {
+    console.error("[PlansPage Fetch Error]:", err);
+  }
 
   return (
     <div className="space-y-6">
@@ -62,13 +67,13 @@ export default async function PlansPage() {
               <div className="mt-4 flex flex-wrap gap-2">
                 {p.classesIncluded && <Badge variant="info" className="font-mono text-[10px]">Classes</Badge>}
                 {p.personalTraining && <Badge variant="warning" className="font-mono text-[10px]">PT Included</Badge>}
-                {p.freezeDays > 0 && <Badge variant="secondary" className="font-mono text-[10px]">{p.freezeDays}d freeze</Badge>}
-                <Badge variant="secondary" className="font-mono text-[10px]">{p._count.memberships} active</Badge>
+                {(p.freezeDays || 0) > 0 && <Badge variant="secondary" className="font-mono text-[10px]">{p.freezeDays}d freeze</Badge>}
+                <Badge variant="secondary" className="font-mono text-[10px]">{p._count?.memberships || 0} active</Badge>
               </div>
 
-              {p.features.length > 0 && (
+              {p.features && p.features.length > 0 && (
                 <ul className="mt-4 space-y-1.5 text-xs text-[#33281E]">
-                  {p.features.slice(0, 4).map((f) => (
+                  {(p.features || []).slice(0, 4).map((f: string) => (
                     <li key={f} className="flex items-center gap-2">
                       <span className="h-1.5 w-1.5 rounded-full bg-[#8B5E34]" />
                       {f}
@@ -78,7 +83,7 @@ export default async function PlansPage() {
               )}
 
               <div className="mt-5 flex-1" />
-              <DeactivatePlanButton id={p.id} disabled={p._count.memberships > 0} />
+              <DeactivatePlanButton id={p.id} disabled={(p._count?.memberships || 0) > 0} />
             </div>
           ))}
         </div>
