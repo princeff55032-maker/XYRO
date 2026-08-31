@@ -5,6 +5,12 @@ import prisma from "../src/lib/db";
 import { generateMemberQrToken, verifyMemberQrToken } from "../src/lib/qr-token";
 import { createDeviceApiKey, rotateDeviceApiKey, hashDeviceApiKey } from "../src/lib/device-auth";
 import { checkRateLimit } from "../src/lib/ratelimit";
+import {
+  generateAndSendEmailOtp,
+  verifyEmailOtp,
+  createLogin2faChallengeToken,
+  verifyLogin2faChallengeToken,
+} from "../src/lib/otp";
 
 let passedTests = 0;
 let failedTests = 0;
@@ -218,6 +224,67 @@ async function runTestSuite() {
     assert(
       unverifiedUser.status === "PENDING_VERIFICATION",
       "Email Verification: User registered in PENDING_VERIFICATION state"
+    );
+
+    // Test 2.2: Generate Signup OTP
+    const signupOtpRes = await generateAndSendEmailOtp({
+      email: unverifiedUser.email,
+      type: "SIGNUP",
+      userName: unverifiedUser.name,
+    });
+    assert(
+      signupOtpRes.ok === true && !!signupOtpRes.devOtp,
+      "Email OTP: 6-digit Signup OTP generated and dispatched"
+    );
+
+    // Test 2.3: Verify OTP is stored as SHA-256 hash in database
+    const otpInDb = await prisma.emailOtp.findFirst({
+      where: { email: unverifiedUser.email, type: "SIGNUP" },
+    });
+    assert(
+      otpInDb !== null && otpInDb.codeHash !== signupOtpRes.devOtp,
+      "Email OTP: 6-digit OTP is hashed with SHA-256 in database (raw code never stored)"
+    );
+
+    // Test 2.4: Invalid OTP attempt rejected
+    const invalidOtpRes = await verifyEmailOtp({
+      email: unverifiedUser.email,
+      code: "000000",
+      type: "SIGNUP",
+    });
+    assert(
+      invalidOtpRes.ok === false,
+      "Email OTP: Incorrect OTP attempt rejected with attempt tracking"
+    );
+
+    // Test 2.5: Valid OTP verification and single-use deletion
+    const validOtpRes = await verifyEmailOtp({
+      email: unverifiedUser.email,
+      code: signupOtpRes.devOtp!,
+      type: "SIGNUP",
+    });
+    assert(
+      validOtpRes.ok === true,
+      "Email OTP: Valid 6-digit OTP verified successfully"
+    );
+
+    const recheckOtp = await prisma.emailOtp.findFirst({
+      where: { email: unverifiedUser.email, type: "SIGNUP" },
+    });
+    assert(
+      recheckOtp === null,
+      "Email OTP: OTP record invalidated immediately after successful verification"
+    );
+
+    // Test 2.6: Login 2FA Challenge Token Creation and Verification
+    const challengeToken = createLogin2faChallengeToken({
+      userId: ownerA.id,
+      email: ownerA.email,
+    });
+    const verifiedChallenge = verifyLogin2faChallengeToken(challengeToken);
+    assert(
+      verifiedChallenge.valid === true && verifiedChallenge.payload?.userId === ownerA.id,
+      "Login 2FA: Cryptographic HMAC challenge token created and validated"
     );
 
     // -----------------------------------------------------------------

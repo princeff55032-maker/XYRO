@@ -4,6 +4,7 @@ import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/db";
 import { getClientIp, checkRateLimit, resetRateLimit } from "@/lib/ratelimit";
+import { verifyLogin2faChallengeToken, verifyEmailOtp } from "@/lib/otp";
 import type { UserRole } from "@prisma/client";
 
 declare module "next-auth" {
@@ -48,8 +49,90 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         email: { label: "Email or Member ID", type: "text" },
         password: { label: "Password", type: "password" },
         portalRole: { label: "Portal Role", type: "text" },
+        otp: { label: "2FA OTP", type: "text" },
+        loginChallengeToken: { label: "2FA Challenge Token", type: "text" },
       },
       async authorize(credentials) {
+        const loginChallengeToken = credentials?.loginChallengeToken as string | undefined;
+        const otp = credentials?.otp as string | undefined;
+
+        // -------------------------------------------------------------
+        // PATH A: Two-Factor Authentication (OTP + Challenge Verification)
+        // -------------------------------------------------------------
+        if (loginChallengeToken && otp) {
+          const challenge = verifyLogin2faChallengeToken(loginChallengeToken);
+          if (!challenge.valid || !challenge.payload) {
+            throw new Error(challenge.error || "2FA verification session expired. Please log in again.");
+          }
+
+          const otpResult = await verifyEmailOtp({
+            email: challenge.payload.email,
+            code: otp,
+            type: "LOGIN_2FA",
+          });
+
+          if (!otpResult.ok) {
+            throw new Error(otpResult.error || "Invalid 2FA verification code.");
+          }
+
+          const user = await prisma.user.findUnique({
+            where: { id: challenge.payload.userId },
+            include: {
+              ownedGyms: { select: { id: true, gymCode: true }, take: 1 },
+              gymStaff: { select: { gymId: true, gym: { select: { gymCode: true } } }, take: 1 },
+              member: { select: { id: true, memberId: true, gymId: true, gym: { select: { gymCode: true } } } },
+              trainer: { select: { id: true, gymId: true, gym: { select: { gymCode: true } } } },
+            },
+          });
+
+          if (!user || user.status === "SUSPENDED" || user.status === "DEACTIVATED") {
+            throw new Error("Your account has been deactivated or suspended.");
+          }
+
+          // Reset attempts & lockout on successful 2FA
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              loginAttempts: 0,
+              lockedUntil: null,
+              lastLoginAt: new Date(),
+            },
+          });
+
+          let gymId: string | null = null;
+          let gymCode: string | null = null;
+          let memberId: string | null = null;
+
+          if (user.ownedGyms.length > 0) {
+            gymId = user.ownedGyms[0].id;
+            gymCode = user.ownedGyms[0].gymCode;
+          } else if (user.gymStaff.length > 0) {
+            gymId = user.gymStaff[0].gymId;
+            gymCode = user.gymStaff[0].gym.gymCode;
+          } else if (user.trainer) {
+            gymId = user.trainer.gymId;
+            gymCode = user.trainer.gym.gymCode;
+          } else if (user.member) {
+            gymId = user.member.gymId;
+            gymCode = user.member.gym.gymCode;
+            memberId = user.member.memberId;
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+            role: user.role,
+            gymId,
+            gymCode,
+            memberId,
+          };
+        }
+
+        // -------------------------------------------------------------
+        // PATH B: Primary Credentials Authentication
+        // -------------------------------------------------------------
         if (!credentials?.email || !credentials?.password) {
           throw new Error("Login identifier and password are required");
         }

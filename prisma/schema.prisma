@@ -961,6 +961,24 @@ model RateLimitRecord {
   @@map("rate_limit_records")
 }
 
+// ============================================
+// EMAIL OTP VERIFICATION (SIGNUP & 2FA LOGIN)
+// ============================================
+
+model EmailOtp {
+  id        String   @id @default(cuid())
+  email     String
+  codeHash  String   // SHA-256 hash of 6-digit OTP
+  type      String   // "SIGNUP" | "LOGIN_2FA"
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([email, type])
+  @@index([expiresAt])
+  @@map("email_otps")
+}
+
 
 
 

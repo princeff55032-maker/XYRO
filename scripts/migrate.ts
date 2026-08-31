@@ -70,11 +70,28 @@ async function run() {
   `);
   console.log("✓ Checked/Created rate_limit_records table");
 
-  // 6. Create indexes
+  // 6. Ensure email_otps table exists
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS "email_otps" (
+      "id" TEXT NOT NULL,
+      "email" TEXT NOT NULL,
+      "codeHash" TEXT NOT NULL,
+      "type" TEXT NOT NULL,
+      "expiresAt" TIMESTAMP(3) NOT NULL,
+      "attempts" INTEGER NOT NULL DEFAULT 0,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "email_otps_pkey" PRIMARY KEY ("id")
+    );
+  `);
+  console.log("✓ Checked/Created email_otps table");
+
+  // 7. Create indexes
   await pool.query(`CREATE INDEX IF NOT EXISTS "access_devices_gymId_idx" ON "access_devices"("gymId");`);
   await pool.query(`CREATE INDEX IF NOT EXISTS "access_devices_apiKeyHash_idx" ON "access_devices"("apiKeyHash");`);
   await pool.query(`CREATE INDEX IF NOT EXISTS "rate_limit_records_key_idx" ON "rate_limit_records"("key");`);
   await pool.query(`CREATE INDEX IF NOT EXISTS "rate_limit_records_expiresAt_idx" ON "rate_limit_records"("expiresAt");`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS "email_otps_email_type_idx" ON "email_otps"("email", "type");`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS "email_otps_expiresAt_idx" ON "email_otps"("expiresAt");`);
 
   await pool.end();
   console.log("Migration complete!");

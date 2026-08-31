@@ -92,17 +92,8 @@ export default function RegisterPage() {
       return;
     }
 
-    // Auto sign-in to the fresh workspace
-    const res = await signIn("credentials", {
-      email: form.email,
-      password: form.password,
-      redirect: false,
-    });
-    if (res?.error) {
-      window.location.href = "/login";
-      return;
-    }
-    window.location.href = "/dashboard";
+    // Redirect to 6-digit email OTP verification screen
+    router.push(`/verify-otp?email=${encodeURIComponent(form.email)}`);
   }
 
   return (
