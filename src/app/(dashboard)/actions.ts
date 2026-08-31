@@ -713,18 +713,19 @@ export async function recordPaymentAction(input: {
             where: { memberId: member.id, gymId: gym.id, status: "ACTIVE" },
             orderBy: { endDate: "desc" },
           });
+          const startDate = existing && existing.endDate > now ? existing.endDate : now;
+          const endDate = new Date(startDate.getTime() + plan.durationDays * 86400000);
+
           const membership = await tx.membership.create({
             data: {
               gymId: gym.id,
               memberId: member.id,
               planId: plan.id,
               status: "ACTIVE",
-              startDate: existing ? existing.endDate : now,
-              endDate: new Date(
-                (existing ? existing.endDate.getTime() : now.getTime()) +
-                  plan.durationDays * 86400000
-              ),
-              daysRemaining: plan.durationDays,
+              startDate,
+              endDate,
+              daysRemaining: Math.max(0, Math.ceil((endDate.getTime() - now.getTime()) / 86400000)),
+              autoRenew: false,
             },
           });
           membershipId = membership.id;

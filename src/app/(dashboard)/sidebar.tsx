@@ -25,7 +25,7 @@ const navSections = [
     items: [
       { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
       { href: "/members", label: "Members", icon: Users },
-      { href: "/leads", label: "Leads CRM", icon: UserPlus },
+      { href: "/leads", label: "Leads", icon: UserPlus },
       { href: "/classes", label: "Classes & Schedule", icon: Calendar },
     ],
   },

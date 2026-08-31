@@ -33,7 +33,7 @@ export function MobileBottomNav() {
   ];
 
   const moreItems = [
-    { href: "/leads", label: "Leads CRM", icon: UserPlus, desc: "Trial inquiries & pipeline" },
+    { href: "/leads", label: "Leads", icon: UserPlus, desc: "Trial inquiries & pipeline" },
     { href: "/classes", label: "Classes & Schedule", icon: Calendar, desc: "Timetables & capacities" },
     { href: "/plans", label: "Membership Plans", icon: BadgePercent, desc: "Pricing rate cards" },
     { href: "/trainers", label: "Trainers & Coaches", icon: Dumbbell, desc: "Staff & assignments" },

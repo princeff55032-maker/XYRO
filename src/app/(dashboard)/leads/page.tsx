@@ -2,7 +2,7 @@ import { requireTenant } from "@/lib/tenant";
 import prisma from "@/lib/db";
 import { LeadsClient } from "./leads-client";
 
-export const metadata = { title: "Leads CRM" };
+export const metadata = { title: "Leads" };
 
 export default async function LeadsPage() {
   const session = await requireTenant();
@@ -26,7 +26,7 @@ export default async function LeadsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-3xl font-bold text-[#33281E]">Inbound Leads &amp; Sales CRM</h1>
+        <h1 className="font-display text-3xl font-bold text-[#33281E]">Leads</h1>
         <p className="mt-1.5 text-sm text-[#8C7A6B]">
           Track prospective gym visitors, trial bookings, and convert inquiries into paying members.
         </p>

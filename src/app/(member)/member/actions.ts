@@ -81,3 +81,147 @@ export async function getSignedMemberQrPassAction(): Promise<QrPassActionResult>
     return { ok: false, error: "Internal error generating pass." };
   }
 }
+
+export type OnlineRenewalResult =
+  | {
+      ok: true;
+      planName: string;
+      newEndDate: string;
+      amount: number;
+      transactionId: string;
+    }
+  | {
+      ok: false;
+      error: string;
+    };
+
+/**
+ * Server Action for online member renewal.
+ * Automatically extends membership and records PAID transaction in the ledger.
+ */
+export async function renewMemberPlanOnlineAction(params?: {
+  planId?: string;
+  paymentMethod?: string;
+}): Promise<OnlineRenewalResult> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { ok: false, error: "Unauthorized: Active member session required." };
+    }
+
+    const member = await prisma.member.findUnique({
+      where: { userId: session.user.id },
+      include: {
+        gym: true,
+        memberships: {
+          include: { plan: true },
+          orderBy: { endDate: "desc" },
+          take: 1,
+        },
+      },
+    });
+
+    if (!member || member.deletedAt || !member.isActive) {
+      return { ok: false, error: "Active member account not found." };
+    }
+
+    // Determine target plan
+    let plan = null;
+    if (params?.planId) {
+      plan = await prisma.membershipPlan.findFirst({
+        where: { id: params.planId, gymId: member.gymId, deletedAt: null, isActive: true },
+      });
+    } else if (member.memberships.length > 0) {
+      plan = member.memberships[0].plan;
+    } else {
+      plan = await prisma.membershipPlan.findFirst({
+        where: { gymId: member.gymId, deletedAt: null, isActive: true },
+        orderBy: { price: "asc" },
+      });
+    }
+
+    if (!plan) {
+      return { ok: false, error: "No active membership plan available for renewal." };
+    }
+
+    const now = new Date();
+    const transactionId = `TXN-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    const result = await prisma.$transaction(async (tx) => {
+      const existing = member.memberships[0];
+      const startDate = existing && existing.endDate > now ? existing.endDate : now;
+      const endDate = new Date(startDate.getTime() + plan.durationDays * 86400000);
+
+      const membership = await tx.membership.create({
+        data: {
+          gymId: member.gymId,
+          memberId: member.id,
+          planId: plan.id,
+          status: "ACTIVE",
+          startDate,
+          endDate,
+          daysRemaining: Math.max(0, Math.ceil((endDate.getTime() - now.getTime()) / 86400000)),
+          autoRenew: false,
+        },
+      });
+
+      // Automatically record in Payment Ledger
+      await tx.payment.create({
+        data: {
+          gymId: member.gymId,
+          memberId: member.id,
+          membershipId: membership.id,
+          amount: plan.price,
+          tax: 0,
+          discount: 0,
+          totalAmount: plan.price,
+          status: "PAID",
+          method: "ONLINE",
+          paidAt: now,
+          transactionId,
+          notes: `Online Self-Renewal — ${plan.name} (${params?.paymentMethod || "UPI/Online"})`,
+        },
+      });
+
+      // Create Notification for Member
+      await tx.notification.create({
+        data: {
+          gymId: member.gymId,
+          userId: member.userId,
+          type: "PAYMENT_RECEIVED",
+          title: "Membership Renewed Successfully",
+          message: `Your subscription to ${plan.name} has been renewed until ${endDate.toLocaleDateString()}. Recorded payment: ₹${plan.price.toLocaleString()}.`,
+        },
+      });
+
+      return { membership, endDate };
+    });
+
+    const { logAuditEvent } = await import("@/lib/audit");
+    await logAuditEvent({
+      userId: member.userId,
+      gymId: member.gymId,
+      action: "MEMBERSHIP_RENEW_ONLINE",
+      resource: "membership",
+      resourceId: result.membership.id,
+      metadata: {
+        planName: plan.name,
+        amount: plan.price,
+        transactionId,
+        validUntil: result.endDate.toISOString(),
+      },
+    });
+
+    return {
+      ok: true,
+      planName: plan.name,
+      newEndDate: result.endDate.toISOString(),
+      amount: plan.price,
+      transactionId,
+    };
+  } catch (error) {
+    console.error("Failed to renew member plan online:", error);
+    return { ok: false, error: "Internal processing error during renewal." };
+  }
+}
+

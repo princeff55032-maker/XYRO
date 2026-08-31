@@ -141,37 +141,8 @@ export function LeadsClient({
     }
   };
 
-  const publicTrialUrl = `/trial/${gymCode}`;
-
   return (
     <div className="space-y-6">
-      {/* Top Banner with Public Link */}
-      <div className="rounded-3xl border border-[#E5D9C5] bg-white p-5 flex flex-wrap items-center justify-between gap-4 shadow-[0_4px_20px_rgba(51,40,30,0.03)]">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#F9F8F6] border border-[#E5D9C5] text-[#8B5E34] shadow-xs">
-            <TrendingUp className="h-5 w-5" />
-          </div>
-          <div>
-            <h4 className="font-mono text-xs font-bold text-[#8B5E34] uppercase tracking-widest">
-              Public Trial Funnel Engine
-            </h4>
-            <p className="text-xs text-[#8C7A6B] mt-0.5">
-              Share your gym&apos;s bespoke trial landing page on Instagram, Google Maps, or WhatsApp.
-            </p>
-          </div>
-        </div>
-
-        <a
-          href={publicTrialUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-2 rounded-xl border border-[#E5D9C5] bg-[#F9F8F6] px-4 py-2 text-xs font-bold text-[#33281E] hover:bg-[#F3EFEA] transition shadow-xs"
-        >
-          <span>Open Public Trial Portal</span>
-          <ExternalLink className="h-3.5 w-3.5 text-[#8B5E34]" />
-        </a>
-      </div>
-
       {/* Filter and Search Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E5D9C5] pb-4">
         <div className="flex flex-wrap items-center gap-2">

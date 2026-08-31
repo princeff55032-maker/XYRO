@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { renewMemberPlanOnlineAction } from "./actions";
 
 export function MemberPaymentCheckout({
   memberName,
@@ -35,6 +36,8 @@ export function MemberPaymentCheckout({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPaid, setIsPaid] = useState(false);
   const [copiedUpi, setCopiedUpi] = useState(false);
+  const [txnId, setTxnId] = useState<string>("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const price = planPrice || 2499;
   const upiId = "xyro.fitness@okaxis";
@@ -45,12 +48,26 @@ export function MemberPaymentCheckout({
     setTimeout(() => setCopiedUpi(false), 2000);
   };
 
-  const handleSimulatePayment = () => {
+  const handleSimulatePayment = async () => {
     setIsProcessing(true);
-    setTimeout(() => {
+    setErrorMessage(null);
+
+    try {
+      const res = await renewMemberPlanOnlineAction({
+        paymentMethod: method === "UPI" ? "UPI" : "CARD",
+      });
+
+      if (res.ok) {
+        setTxnId(res.transactionId);
+        setIsPaid(true);
+      } else {
+        setErrorMessage(res.error || "Payment processing failed. Please try again.");
+      }
+    } catch {
+      setErrorMessage("Network error processing renewal. Please try again.");
+    } finally {
       setIsProcessing(false);
-      setIsPaid(true);
-    }, 1800);
+    }
   };
 
   return (
@@ -116,7 +133,7 @@ export function MemberPaymentCheckout({
                     <div className="flex justify-between text-[#8C7A6B]">
                       <span>Transaction Reference:</span>
                       <span className="text-[#8B5E34] font-mono font-semibold">
-                        TXN-{Math.floor(100000 + Math.random() * 900000)}
+                        {txnId || "TXN-VERIFIED"}
                       </span>
                     </div>
                     <div className="flex justify-between text-[#8C7A6B]">
@@ -259,6 +276,12 @@ export function MemberPaymentCheckout({
                           />
                         </div>
                       </div>
+                    </div>
+                  )}
+
+                  {errorMessage && (
+                    <div className="rounded-xl border border-red-200 bg-red-50 p-2.5 text-xs text-red-700 font-medium">
+                      {errorMessage}
                     </div>
                   )}
 
