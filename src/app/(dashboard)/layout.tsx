@@ -16,24 +16,32 @@ export default async function DashboardLayout({
 }) {
   const session = await requireTenant();
 
-  const gym = session.user.gymId
-    ? await prisma.gym.findUnique({
+  let gym: { name: string; gymCode: string } | null = null;
+  if (session?.user?.gymId) {
+    try {
+      gym = await prisma.gym.findUnique({
         where: { id: session.user.gymId },
         select: { name: true, gymCode: true },
-      })
-    : null;
+      });
+    } catch (e) {
+      console.warn("[DashboardLayout Gym Query Error]:", e);
+    }
+  }
+
+  const gymName = gym?.name || "Workspace";
+  const gymCode = gym?.gymCode || session.user.gymCode || "XYRO-001";
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[#F9F8F6] text-[#33281E] font-sans select-none">
       {/* Permanent Native Desktop Title Bar */}
-      <DesktopTitleBar gymName={gym?.name} gymCode={gym?.gymCode} />
+      <DesktopTitleBar gymName={gymName} gymCode={gymCode} />
 
       {/* Main Body below Title Bar */}
       <div className="flex flex-1 pt-9 overflow-hidden">
         {/* Left-Aligned Navigation View Pane */}
         <Sidebar
-          gymName={gym?.name}
-          gymCode={gym?.gymCode}
+          gymName={gymName}
+          gymCode={gymCode}
           userName={session.user.name}
           userRole={session.user.role}
         />

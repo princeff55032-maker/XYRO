@@ -33,120 +33,158 @@ export default async function DashboardPage() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
 
-  const [
-    gym,
-    activeMembers,
-    totalMembers,
-    newMembersThisMonth,
-    monthRevenue,
-    todayRevenue,
-    todayCheckins,
-    currentlyInside,
-    expiringSoon,
-    overdueMembers,
-    recentMembers,
-    recentPayments,
-    payments14d,
-    totalTrainers,
-    assignedMembersCount,
-  ] = await Promise.all([
-    prisma.gym.findUnique({ where: { id: gymId } }),
-    prisma.member.count({ where: { gymId, isActive: true, deletedAt: null } }),
-    prisma.member.count({ where: { gymId, deletedAt: null } }),
-    prisma.member.count({
-      where: { gymId, deletedAt: null, createdAt: { gte: monthStart } },
-    }),
-    prisma.payment.aggregate({
-      where: {
-        gymId,
-        status: "PAID",
-        paidAt: { gte: monthStart },
-      },
-      _sum: { totalAmount: true },
-    }),
-    prisma.payment.aggregate({
-      where: {
-        gymId,
-        status: "PAID",
-        paidAt: { gte: todayStart },
-      },
-      _sum: { totalAmount: true },
-    }),
-    prisma.attendance.count({
-      where: {
-        gymId,
-        date: { gte: todayStart },
-      },
-    }),
-    prisma.attendance.count({
-      where: {
-        gymId,
-        date: { gte: todayStart },
-        checkIn: { gte: twoHoursAgo },
-        checkOut: null,
-      },
-    }),
-    prisma.membership.findMany({
-      where: {
-        gymId,
-        status: "ACTIVE",
-        endDate: {
-          gte: now,
-          lte: new Date(Date.now() + 7 * 86400000),
+  let gym: { name: string; gymCode: string } | null = null;
+  let activeMembers = 0;
+  let totalMembers = 0;
+  let newMembersThisMonth = 0;
+  let monthlyInflow = 0;
+  let todayInflow = 0;
+  let todayCheckins = 0;
+  let currentlyInside = 0;
+  let expiringSoon: Array<{
+    id: string;
+    endDate: Date;
+    member: { user: { name: string; email: string; phone: string | null } } | null;
+    plan: { name: string } | null;
+  }> = [];
+  let overdueMembers = 0;
+  let recentMembers: Array<{
+    id: string;
+    memberId: string;
+    user: { name: string; email: string; phone: string | null } | null;
+  }> = [];
+  let recentPayments: Array<{
+    id: string;
+    method: string;
+    paidAt: Date | null;
+    totalAmount: number;
+    member: { user: { name: string } | null } | null;
+  }> = [];
+  let days: { day: string; revenue: number }[] = [];
+
+  try {
+    const [
+      gymRes,
+      activeMembersRes,
+      totalMembersRes,
+      newMembersThisMonthRes,
+      monthRevenueRes,
+      todayRevenueRes,
+      todayCheckinsRes,
+      currentlyInsideRes,
+      expiringSoonRes,
+      overdueMembersRes,
+      recentMembersRes,
+      recentPaymentsRes,
+      payments14dRes,
+    ] = await Promise.all([
+      prisma.gym.findUnique({ where: { id: gymId }, select: { name: true, gymCode: true } }),
+      prisma.member.count({ where: { gymId, isActive: true, deletedAt: null } }),
+      prisma.member.count({ where: { gymId, deletedAt: null } }),
+      prisma.member.count({
+        where: { gymId, deletedAt: null, createdAt: { gte: monthStart } },
+      }),
+      prisma.payment.aggregate({
+        where: {
+          gymId,
+          status: "PAID",
+          paidAt: { gte: monthStart },
         },
-      },
-      include: {
-        member: { include: { user: { select: { name: true, email: true, phone: true } } } },
-        plan: { select: { name: true } },
-      },
-      orderBy: { endDate: "asc" },
-      take: 6,
-    }),
-    prisma.membership.count({
-      where: {
-        gymId,
-        status: "EXPIRED",
-      },
-    }),
-    prisma.member.findMany({
-      where: { gymId, deletedAt: null },
-      include: { user: { select: { name: true, email: true, phone: true } } },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-    }),
-    prisma.payment.findMany({
-      where: { gymId, status: "PAID" },
-      include: { member: { include: { user: { select: { name: true } } } } },
-      orderBy: { paidAt: "desc" },
-      take: 5,
-    }),
-    prisma.payment.findMany({
-      where: {
-        gymId,
-        status: "PAID",
-        paidAt: { gte: new Date(Date.now() - 13 * 86400000) },
-      },
-      select: { totalAmount: true, paidAt: true },
-    }),
-    prisma.trainer.count({ where: { gymId, deletedAt: null, isActive: true } }),
-    prisma.member.count({ where: { gymId, deletedAt: null, trainerId: { not: null } } }),
-  ]);
+        _sum: { totalAmount: true },
+      }),
+      prisma.payment.aggregate({
+        where: {
+          gymId,
+          status: "PAID",
+          paidAt: { gte: todayStart },
+        },
+        _sum: { totalAmount: true },
+      }),
+      prisma.attendance.count({
+        where: {
+          gymId,
+          date: { gte: todayStart },
+        },
+      }),
+      prisma.attendance.count({
+        where: {
+          gymId,
+          date: { gte: todayStart },
+          checkIn: { gte: twoHoursAgo },
+          checkOut: null,
+        },
+      }),
+      prisma.membership.findMany({
+        where: {
+          gymId,
+          status: "ACTIVE",
+          endDate: {
+            gte: now,
+            lte: new Date(Date.now() + 7 * 86400000),
+          },
+        },
+        include: {
+          member: { include: { user: { select: { name: true, email: true, phone: true } } } },
+          plan: { select: { name: true } },
+        },
+        orderBy: { endDate: "asc" },
+        take: 6,
+      }),
+      prisma.membership.count({
+        where: {
+          gymId,
+          status: "EXPIRED",
+        },
+      }),
+      prisma.member.findMany({
+        where: { gymId, deletedAt: null },
+        include: { user: { select: { name: true, email: true, phone: true } } },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      }),
+      prisma.payment.findMany({
+        where: { gymId, status: "PAID" },
+        include: { member: { include: { user: { select: { name: true } } } } },
+        orderBy: { paidAt: "desc" },
+        take: 5,
+      }),
+      prisma.payment.findMany({
+        where: {
+          gymId,
+          status: "PAID",
+          paidAt: { gte: new Date(Date.now() - 13 * 86400000) },
+        },
+        select: { totalAmount: true, paidAt: true },
+      }),
+    ]);
 
-  // 14-Day revenue series
-  const days: { day: string; revenue: number }[] = [];
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() - i);
-    const next = new Date(d.getTime() + 86400000);
-    const sum = payments14d
-      .filter((p) => p.paidAt && p.paidAt >= d && p.paidAt < next)
-      .reduce((acc, p) => acc + p.totalAmount, 0);
-    days.push({ day: d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" }), revenue: sum });
+    gym = gymRes;
+    activeMembers = activeMembersRes;
+    totalMembers = totalMembersRes;
+    newMembersThisMonth = newMembersThisMonthRes;
+    monthlyInflow = monthRevenueRes?._sum?.totalAmount ?? 0;
+    todayInflow = todayRevenueRes?._sum?.totalAmount ?? 0;
+    todayCheckins = todayCheckinsRes;
+    currentlyInside = currentlyInsideRes;
+    expiringSoon = (expiringSoonRes as any) || [];
+    overdueMembers = overdueMembersRes;
+    recentMembers = (recentMembersRes as any) || [];
+    recentPayments = (recentPaymentsRes as any) || [];
+
+    // 14-Day revenue series
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - i);
+      const next = new Date(d.getTime() + 86400000);
+      const sum = (payments14dRes || [])
+        .filter((p) => p.paidAt && p.paidAt >= d && p.paidAt < next)
+        .reduce((acc, p) => acc + (p.totalAmount || 0), 0);
+      days.push({ day: d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" }), revenue: sum });
+    }
+  } catch (err) {
+    console.error("[DashboardPage Data Load Error]:", err);
   }
-
-  // Attendance and Occupancy Rates
-  const monthlyInflow = monthRevenue?._sum?.totalAmount ?? 0;
 
   return (
     <div className="space-y-6 max-w-full">
@@ -158,11 +196,11 @@ export default async function DashboardPage() {
               Floor Operations Overview
             </h1>
             <span className="rounded-full border border-[#E5D9C5] bg-[#F9F8F6] px-2.5 py-0.5 text-[10px] font-bold text-[#8B5E34] font-mono">
-              {gym?.gymCode}
+              {gym?.gymCode || session.user.gymCode || "XYRO-001"}
             </span>
           </div>
           <p className="text-xs text-[#8C7A6B] mt-0.5">
-            Real-time business outcomes and management console for {gym?.name}.
+            Real-time business outcomes and management console for {gym?.name || "Gym Workspace"}.
           </p>
         </div>
 
@@ -193,7 +231,7 @@ export default async function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Today's Revenue"
-          value={formatCurrency(todayRevenue?._sum?.totalAmount ?? 0)}
+          value={formatCurrency(todayInflow)}
           icon={IndianRupee}
           hint={`MTD Inflow: ${formatCurrency(monthlyInflow)}`}
         />
@@ -260,9 +298,9 @@ export default async function DashboardPage() {
                 >
                   <div className="min-w-0">
                     <p className="truncate text-xs font-bold text-[#33281E]">
-                      {m.member.user.name}
+                      {m.member?.user?.name || "Member"}
                     </p>
-                    <p className="truncate font-mono text-[10px] text-[#8C7A6B]">{m.plan.name}</p>
+                    <p className="truncate font-mono text-[10px] text-[#8C7A6B]">{m.plan?.name || "Plan"}</p>
                   </div>
                   <span className="shrink-0 font-mono text-[10px] font-bold text-[#8B5E34] bg-white px-2 py-0.5 rounded-full border border-[#E5D9C5]">
                     {formatDate(m.endDate)}
@@ -297,8 +335,8 @@ export default async function DashboardPage() {
               recentMembers.map((m) => (
                 <div key={m.id} className="flex items-center justify-between py-2.5 text-xs">
                   <div>
-                    <p className="font-bold text-[#33281E]">{m.user.name}</p>
-                    <p className="font-mono text-[11px] text-[#8C7A6B]">{m.user.phone || m.user.email}</p>
+                    <p className="font-bold text-[#33281E]">{m.user?.name || "Member"}</p>
+                    <p className="font-mono text-[11px] text-[#8C7A6B]">{m.user?.phone || m.user?.email || "—"}</p>
                   </div>
                   <span className="font-mono text-[11px] text-[#8B5E34] bg-[#F9F8F6] px-2 py-0.5 rounded-md border border-[#E5D9C5]">
                     {m.memberId}
@@ -330,7 +368,7 @@ export default async function DashboardPage() {
               recentPayments.map((p) => (
                 <div key={p.id} className="flex items-center justify-between py-2.5 text-xs">
                   <div>
-                    <p className="font-bold text-[#33281E]">{p.member.user.name}</p>
+                    <p className="font-bold text-[#33281E]">{p.member?.user?.name || "Direct Inflow / Guest"}</p>
                     <p className="font-mono text-[11px] text-[#8C7A6B]">
                       {p.method} · {p.paidAt ? formatDate(p.paidAt) : "Recently"}
                     </p>
