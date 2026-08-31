@@ -52,7 +52,7 @@ export async function getSignedMemberQrPassAction(): Promise<QrPassActionResult>
       return { ok: false, error: "Member account is currently inactive." };
     }
 
-    if (member.gym.status !== "ACTIVE" || member.gym.deletedAt) {
+    if (!member.gym || member.gym.status !== "ACTIVE" || member.gym.deletedAt) {
       return { ok: false, error: "Gym facility is inactive or suspended." };
     }
 
@@ -62,9 +62,9 @@ export async function getSignedMemberQrPassAction(): Promise<QrPassActionResult>
     // Generate cryptographic HMAC-SHA256 token valid for 60 seconds
     const qrToken = generateMemberQrToken({
       memberId: member.id,
-      gymId: member.gym.id,
+      gymId: member.gym?.id || member.gymId,
       memberCode: member.memberId,
-      gymCode: member.gym.gymCode,
+      gymCode: member.gym?.gymCode || "XYRO",
       ttlSeconds: 60,
     });
 
@@ -72,8 +72,8 @@ export async function getSignedMemberQrPassAction(): Promise<QrPassActionResult>
       ok: true,
       qrToken,
       memberId: member.memberId,
-      gymCode: member.gym.gymCode,
-      gymName: member.gym.name,
+      gymCode: member.gym?.gymCode || "XYRO",
+      gymName: member.gym?.name || "Gym",
       isValid: isMembershipValid,
     };
   } catch (error) {

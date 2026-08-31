@@ -20,51 +20,56 @@ export default async function TrainerPortalPage() {
     redirect("/login?callbackUrl=/trainer");
   }
 
-  const trainer = await prisma.trainer.findUnique({
-    where: { userId: session.user.id },
-    include: {
-      gym: true,
-      user: true,
-      members: {
-        where: { deletedAt: null },
-        include: {
-          user: {
-            select: {
-              name: true,
-              email: true,
-              phone: true,
-            },
-          },
-          memberships: {
-            where: { status: "ACTIVE" },
-            include: { plan: { select: { name: true } } },
-            take: 1,
-          },
-          workoutPlans: {
-            where: { isActive: true },
-            include: {
-              exercises: {
-                orderBy: { sortOrder: "asc" },
+  let trainer: any = null;
+  try {
+    trainer = await prisma.trainer.findUnique({
+      where: { userId: session.user.id },
+      include: {
+        gym: true,
+        user: true,
+        members: {
+          where: { deletedAt: null },
+          include: {
+            user: {
+              select: {
+                name: true,
+                email: true,
+                phone: true,
               },
             },
-            orderBy: { createdAt: "desc" },
-            take: 1,
-          },
-          dietPlans: {
-            where: { isActive: true },
-            include: {
-              meals: {
-                orderBy: { sortOrder: "asc" },
-              },
+            memberships: {
+              where: { status: "ACTIVE" },
+              include: { plan: { select: { name: true } } },
+              take: 1,
             },
-            orderBy: { createdAt: "desc" },
-            take: 1,
+            workoutPlans: {
+              where: { isActive: true },
+              include: {
+                exercises: {
+                  orderBy: { sortOrder: "asc" },
+                },
+              },
+              orderBy: { createdAt: "desc" },
+              take: 1,
+            },
+            dietPlans: {
+              where: { isActive: true },
+              include: {
+                meals: {
+                  orderBy: { sortOrder: "asc" },
+                },
+              },
+              orderBy: { createdAt: "desc" },
+              take: 1,
+            },
           },
+          orderBy: { createdAt: "desc" },
         },
-        orderBy: { createdAt: "desc" },
       },
-    },
-  });
+    });
+  } catch (err) {
+    console.error("[TrainerPortalPage Error]:", err);
+  }
 
   if (!trainer) {
     return (

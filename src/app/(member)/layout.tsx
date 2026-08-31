@@ -17,13 +17,18 @@ export default async function MemberPortalLayout({
     redirect("/login?callbackUrl=/member");
   }
 
-  const member = await prisma.member.findUnique({
-    where: { userId: session.user.id },
-    include: {
-      gym: { select: { name: true, gymCode: true } },
-      user: { select: { name: true, email: true } },
-    },
-  });
+  let member: any = null;
+  try {
+    member = await prisma.member.findUnique({
+      where: { userId: session.user.id },
+      include: {
+        gym: { select: { name: true, gymCode: true } },
+        user: { select: { name: true, email: true } },
+      },
+    });
+  } catch (err) {
+    console.error("[MemberPortalLayout Error]:", err);
+  }
 
   return (
     <div className="min-h-screen bg-[#F9F8F6] text-[#33281E]">

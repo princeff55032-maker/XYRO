@@ -16,12 +16,17 @@ export default async function TrainerPortalLayout({
     redirect("/login?callbackUrl=/trainer");
   }
 
-  const trainer = await prisma.trainer.findUnique({
-    where: { userId: session.user.id },
-    include: {
-      gym: { select: { name: true, gymCode: true } },
-    },
-  });
+  let trainer: any = null;
+  try {
+    trainer = await prisma.trainer.findUnique({
+      where: { userId: session.user.id },
+      include: {
+        gym: { select: { name: true, gymCode: true } },
+      },
+    });
+  } catch (err) {
+    console.error("[TrainerPortalLayout Error]:", err);
+  }
 
   return (
     <div className="min-h-screen bg-[#F9F8F6] text-[#33281E]">

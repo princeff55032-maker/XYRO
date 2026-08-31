@@ -125,9 +125,16 @@ export async function getGymSubscription(gymId: string): Promise<{
   config: PlanConfig;
   isTrial: boolean;
 }> {
-  const sub = await prisma.gymSubscription.findUnique({
-    where: { gymId },
-  });
+  let sub: GymSubscription | null = null;
+  try {
+    if (gymId) {
+      sub = await prisma.gymSubscription.findUnique({
+        where: { gymId },
+      });
+    }
+  } catch (err) {
+    console.warn("[getGymSubscription Error]:", err);
+  }
 
   const plan: SubscriptionPlan = sub?.status === "ACTIVE" ? sub.plan : "FREE";
   const config = PLAN_CONFIGS[plan] || PLAN_CONFIGS.FREE;

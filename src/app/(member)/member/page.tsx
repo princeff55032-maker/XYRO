@@ -34,47 +34,52 @@ export default async function MemberPortalPage() {
   }
 
   // Fetch complete member profile and records
-  const member = await prisma.member.findUnique({
-    where: { userId: session.user.id },
-    include: {
-      gym: true,
-      user: true,
-      assignedTrainer: {
-        include: {
-          user: { select: { name: true, email: true, phone: true } },
+  let member: any = null;
+  try {
+    member = await prisma.member.findUnique({
+      where: { userId: session.user.id },
+      include: {
+        gym: true,
+        user: true,
+        assignedTrainer: {
+          include: {
+            user: { select: { name: true, email: true, phone: true } },
+          },
+        },
+        memberships: {
+          include: { plan: true },
+          orderBy: { createdAt: "desc" },
+        },
+        attendance: {
+          orderBy: { date: "desc" },
+          take: 10,
+        },
+        progressRecords: {
+          orderBy: { date: "desc" },
+          take: 30,
+        },
+        workoutPlans: {
+          where: { isActive: true },
+          include: { exercises: { orderBy: { sortOrder: "asc" } } },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+        dietPlans: {
+          where: { isActive: true },
+          include: { meals: { orderBy: { sortOrder: "asc" } } },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+        payments: {
+          orderBy: { createdAt: "desc" },
+          take: 5,
+          include: { invoice: true },
         },
       },
-      memberships: {
-        include: { plan: true },
-        orderBy: { createdAt: "desc" },
-      },
-      attendance: {
-        orderBy: { date: "desc" },
-        take: 10,
-      },
-      progressRecords: {
-        orderBy: { date: "desc" },
-        take: 30,
-      },
-      workoutPlans: {
-        where: { isActive: true },
-        include: { exercises: { orderBy: { sortOrder: "asc" } } },
-        orderBy: { createdAt: "desc" },
-        take: 1,
-      },
-      dietPlans: {
-        where: { isActive: true },
-        include: { meals: { orderBy: { sortOrder: "asc" } } },
-        orderBy: { createdAt: "desc" },
-        take: 1,
-      },
-      payments: {
-        orderBy: { createdAt: "desc" },
-        take: 5,
-        include: { invoice: true },
-      },
-    },
-  });
+    });
+  } catch (err) {
+    console.error("[MemberPortalPage Fetch Error]:", err);
+  }
 
   if (!member) {
     return (
@@ -90,12 +95,15 @@ export default async function MemberPortalPage() {
     );
   }
 
-  const activeMembership = member.memberships.find((m) => m.status === "ACTIVE");
+  const activeMembership = member.memberships?.find((m: any) => m.status === "ACTIVE");
   const daysLeft = activeMembership ? daysRemaining(activeMembership.endDate) : 0;
-  const isPassValid = member.isActive && !!activeMembership && daysLeft > 0;
+  const isPassValid = Boolean(member.isActive && activeMembership && daysLeft > 0);
 
-  const currentWorkout = member.workoutPlans[0];
-  const currentDiet = member.dietPlans[0];
+  const currentWorkout = member.workoutPlans?.[0];
+  const currentDiet = member.dietPlans?.[0];
+  const attendanceList = member.attendance || [];
+  const paymentsList = member.payments || [];
+  const progressList = member.progressRecords || [];
 
   return (
     <div className="space-y-8">
@@ -191,7 +199,7 @@ export default async function MemberPortalPage() {
       </div>
 
       {/* 3. Daily Progress & Body Metrics Tracker */}
-      <DailyProgressTracker records={member.progressRecords} />
+      <DailyProgressTracker records={progressList} />
 
       {/* 4. Workout & Diet Programs Section */}
       <div className="grid gap-6 lg:grid-cols-2">
@@ -211,14 +219,14 @@ export default async function MemberPortalPage() {
                 </p>
               </div>
             </div>
-            {currentWorkout && (
+            {currentWorkout?.exercises && (
               <Badge variant="default">{currentWorkout.exercises.length} Exercises</Badge>
             )}
           </div>
 
           <div className="mt-6 flex-1 space-y-3">
-            {currentWorkout && currentWorkout.exercises.length > 0 ? (
-              currentWorkout.exercises.map((ex) => (
+            {currentWorkout?.exercises && currentWorkout.exercises.length > 0 ? (
+              currentWorkout.exercises.map((ex: any) => (
                 <div
                   key={ex.id}
                   className="flex items-center justify-between rounded-2xl border border-[#E5D9C5] bg-[#F9F8F6] p-3.5 transition hover:bg-[#F3EFEA]"
@@ -278,8 +286,8 @@ export default async function MemberPortalPage() {
           </div>
 
           <div className="mt-6 flex-1 space-y-3">
-            {currentDiet && currentDiet.meals.length > 0 ? (
-              currentDiet.meals.map((meal) => (
+            {currentDiet?.meals && currentDiet.meals.length > 0 ? (
+              currentDiet.meals.map((meal: any) => (
                 <div
                   key={meal.id}
                   className="rounded-2xl border border-[#E5D9C5] bg-[#F9F8F6] p-3.5 space-y-1.5 transition hover:bg-[#F3EFEA]"
@@ -324,8 +332,8 @@ export default async function MemberPortalPage() {
           </h3>
 
           <div className="mt-4 space-y-2.5">
-            {member.attendance.length > 0 ? (
-              member.attendance.map((att) => (
+            {attendanceList.length > 0 ? (
+              attendanceList.map((att: any) => (
                 <div
                   key={att.id}
                   className="flex items-center justify-between rounded-2xl border border-[#E5D9C5] bg-[#F9F8F6] px-4 py-3 text-xs"
@@ -337,7 +345,7 @@ export default async function MemberPortalPage() {
                         {formatDate(att.date, "long")}
                       </p>
                       <p className="text-[11px] text-[#8C7A6B]">
-                        Check-in at {new Date(att.checkIn).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        Check-in at {att.checkIn ? new Date(att.checkIn).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Recently"}
                       </p>
                     </div>
                   </div>
@@ -361,8 +369,8 @@ export default async function MemberPortalPage() {
           </h3>
 
           <div className="mt-4 space-y-2.5">
-            {member.payments.length > 0 ? (
-              member.payments.map((p) => (
+            {paymentsList.length > 0 ? (
+              paymentsList.map((p: any) => (
                 <div
                   key={p.id}
                   className="flex items-center justify-between rounded-2xl border border-[#E5D9C5] bg-[#F9F8F6] px-4 py-3 text-xs"
