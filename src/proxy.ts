@@ -46,14 +46,20 @@ export async function proxy(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // Check for session cookies (Supabase or NextAuth)
-  const hasSupabaseCookie = request.cookies.getAll().some((c) => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"));
-  const token =
-    hasSupabaseCookie ||
-    request.cookies.get("authjs.session-token")?.value ||
-    request.cookies.get("__Secure-authjs.session-token")?.value;
+  // Check for session cookies (Supabase, Auth.js, NextAuth, chunked tokens)
+  const allCookies = request.cookies.getAll();
+  const hasAuthCookie = allCookies.some(
+    (c) =>
+      c.name.includes("session-token") ||
+      c.name.includes("auth-token") ||
+      c.name.startsWith("authjs.") ||
+      c.name.startsWith("__Secure-authjs.") ||
+      c.name.startsWith("next-auth.") ||
+      c.name.startsWith("__Secure-next-auth.") ||
+      c.name.startsWith("sb-")
+  );
 
-  if (!token) {
+  if (!hasAuthCookie) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
@@ -61,6 +67,8 @@ export async function proxy(request: NextRequest) {
 
   return supabaseResponse;
 }
+
+export const middleware = proxy;
 
 export const config = {
   matcher: [

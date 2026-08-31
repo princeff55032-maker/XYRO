@@ -39,33 +39,38 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  // Fetch verified user from Supabase Auth
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    // Fetch verified user from Supabase Auth
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
-  const isVerifyEmailPage = pathname.startsWith("/verify-email");
-  const isAuthCallback = pathname.startsWith("/auth/callback");
-  const isPublicAuth =
-    pathname === "/" ||
-    pathname.startsWith("/login") ||
-    pathname.startsWith("/register") ||
-    pathname.startsWith("/forgot-password") ||
-    pathname.startsWith("/api/auth");
+    const { pathname } = request.nextUrl;
+    const isVerifyEmailPage = pathname.startsWith("/verify-email");
+    const isAuthCallback = pathname.startsWith("/auth/callback");
+    const isPublicAuth =
+      pathname === "/" ||
+      pathname.startsWith("/login") ||
+      pathname.startsWith("/register") ||
+      pathname.startsWith("/forgot-password") ||
+      pathname.startsWith("/api/auth");
 
-  // 1. Redirect unverified users away from protected areas to /verify-email
-  if (user && !user.email_confirmed_at && !isVerifyEmailPage && !isAuthCallback && !isPublicAuth) {
-    const verifyUrl = request.nextUrl.clone();
-    verifyUrl.pathname = "/verify-email";
-    return NextResponse.redirect(verifyUrl);
-  }
+    // 1. Redirect unverified users away from protected areas to /verify-email
+    if (user && !user.email_confirmed_at && !isVerifyEmailPage && !isAuthCallback && !isPublicAuth) {
+      const verifyUrl = request.nextUrl.clone();
+      verifyUrl.pathname = "/verify-email";
+      return NextResponse.redirect(verifyUrl);
+    }
 
-  // 2. Redirect verified users away from /verify-email to /dashboard
-  if (user && user.email_confirmed_at && isVerifyEmailPage) {
-    const dashboardUrl = request.nextUrl.clone();
-    dashboardUrl.pathname = "/dashboard";
-    return NextResponse.redirect(dashboardUrl);
+    // 2. Redirect verified users away from /verify-email to /dashboard
+    if (user && user.email_confirmed_at && isVerifyEmailPage) {
+      const dashboardUrl = request.nextUrl.clone();
+      dashboardUrl.pathname = "/dashboard";
+      return NextResponse.redirect(dashboardUrl);
+    }
+  } catch (err) {
+    // Gracefully continue without breaking edge/middleware
+    console.warn("[Middleware updateSession]: Auth check warning:", err);
   }
 
   return supabaseResponse;
