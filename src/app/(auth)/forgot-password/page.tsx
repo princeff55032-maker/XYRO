@@ -42,7 +42,7 @@ export default function ForgotPasswordPage() {
           If an account exists for <span className="font-semibold text-[#8B5E34]">{email}</span>,
           reset instructions are on their way.
           <p className="mt-2 text-xs text-[#8C7A6B]">
-            (Email delivery is disabled in the local dev environment.)
+            Please check your inbox (and spam folder) for the link to set your new password.
           </p>
         </div>
       ) : (
