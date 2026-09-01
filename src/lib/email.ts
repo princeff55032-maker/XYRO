@@ -10,26 +10,36 @@ export interface SendEmailOptions {
 let transporter: nodemailer.Transporter | null = null;
 
 function getTransporter() {
-  if (transporter) return transporter;
-
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD;
-  const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
-  const smtpPort = Number(process.env.SMTP_PORT) || 465;
 
-  if (smtpUser && smtpPass) {
-    transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpPort === 465,
+  if (!smtpUser || !smtpPass) return null;
+
+  const cleanPass = smtpPass.replace(/\s+/g, "");
+
+  // Gmail-specific optimized transport
+  if (process.env.EMAIL_PROVIDER === "gmail" || smtpUser.includes("@gmail.com")) {
+    return nodemailer.createTransport({
+      service: "gmail",
       auth: {
         user: smtpUser,
-        pass: smtpPass.replace(/\s+/g, ""),
+        pass: cleanPass,
       },
     });
   }
 
-  return transporter;
+  const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
+  const smtpPort = Number(process.env.SMTP_PORT) || 465;
+
+  return nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465,
+    auth: {
+      user: smtpUser,
+      pass: cleanPass,
+    },
+  });
 }
 
 /**
