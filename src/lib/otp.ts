@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import prisma from "@/lib/db";
+import { sendAppEmail } from "@/lib/email";
 
 export type OtpType = "SIGNUP" | "LOGIN_2FA" | "PASSWORD_RESET";
 
@@ -30,7 +31,7 @@ export async function generateAndSendEmailOtp(params: {
   email: string;
   type: OtpType;
   userName?: string;
-}): Promise<{ ok: boolean; error?: string; devOtp?: string }> {
+}): Promise<{ ok: boolean; error?: string }> {
   const normalizedEmail = params.email.trim().toLowerCase();
   const now = Date.now();
   const expiresAt = new Date(now + 10 * 60 * 1000); // 10 minutes TTL
@@ -65,60 +66,45 @@ export async function generateAndSendEmailOtp(params: {
     console.log(`⏳ Expires: 10 minutes`);
     console.log(`=======================================================\n`);
 
-    // 5. Send real email via Resend if API key is present
-    const resendApiKey = process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY;
-    if (resendApiKey) {
-      const subject =
-        params.type === "SIGNUP"
-          ? "Verify your XYRO Account"
-          : params.type === "LOGIN_2FA"
-          ? "Your XYRO 2FA Login Code"
-          : "Your XYRO Verification Code";
+    // 5. Send real email via Gmail SMTP or Resend
+    const subject =
+      params.type === "SIGNUP"
+        ? "Verify your XYRO Account"
+        : params.type === "LOGIN_2FA"
+        ? "Your XYRO 2FA Login Code"
+        : "Your XYRO Verification Code";
 
-      const title =
-        params.type === "SIGNUP"
-          ? "Account Email Verification"
-          : params.type === "LOGIN_2FA"
-          ? "Two-Factor Authentication Code"
-          : "Verification Code";
+    const title =
+      params.type === "SIGNUP"
+        ? "Account Email Verification"
+        : params.type === "LOGIN_2FA"
+        ? "Two-Factor Authentication Code"
+        : "Verification Code";
 
-      const description =
-        params.type === "SIGNUP"
-          ? "Thank you for registering with XYRO. Enter this 6-digit code to activate your account and access your workspace."
-          : "A login attempt was initiated for your XYRO account. Enter this 6-digit verification code to complete your login.";
+    const description =
+      params.type === "SIGNUP"
+        ? "Thank you for registering with XYRO. Enter this 6-digit code to activate your account and access your workspace."
+        : "A login attempt was initiated for your XYRO account. Enter this 6-digit verification code to complete your login.";
 
-      try {
-        await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${resendApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: process.env.EMAIL_FROM || "XYRO Security <onboarding@resend.dev>",
-            to: [normalizedEmail],
-            subject,
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 24px; border: 1px solid #E5D9C5; border-radius: 16px; background-color: #FAF8F5;">
-                <h1 style="color: #8B5E34; font-size: 24px; margin-top: 0; font-weight: 800;">${title}</h1>
-                <p style="color: #33281E; font-size: 15px; line-height: 1.6;">Hello ${params.userName ? params.userName : ""},</p>
-                <p style="color: #33281E; font-size: 14px; line-height: 1.6;">${description}</p>
-                
-                <div style="margin: 28px 0; padding: 20px; background-color: #FFFFFF; border: 2px dashed #8B5E34; border-radius: 12px; text-align: center;">
-                  <span style="font-family: monospace; font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #8B5E34;">${otp}</span>
-                </div>
-                
-                <p style="font-size: 12px; color: #8C7A6B; line-height: 1.5;">This verification code will expire in <strong>10 minutes</strong>. Never share this code with anyone. If you did not initiate this request, please change your password immediately.</p>
-              </div>
-            `,
-          }),
-        });
-      } catch (sendErr) {
-        console.error("[OTP Email Send Error]:", sendErr);
-      }
-    }
+    await sendAppEmail({
+      to: normalizedEmail,
+      subject,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 24px; border: 1px solid #E5D9C5; border-radius: 16px; background-color: #FAF8F5;">
+          <h1 style="color: #8B5E34; font-size: 24px; margin-top: 0; font-weight: 800;">${title}</h1>
+          <p style="color: #33281E; font-size: 15px; line-height: 1.6;">Hello ${params.userName ? params.userName : ""},</p>
+          <p style="color: #33281E; font-size: 14px; line-height: 1.6;">${description}</p>
+          
+          <div style="margin: 28px 0; padding: 20px; background-color: #FFFFFF; border: 2px dashed #8B5E34; border-radius: 12px; text-align: center;">
+            <span style="font-family: monospace; font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #8B5E34;">${otp}</span>
+          </div>
+          
+          <p style="font-size: 12px; color: #8C7A6B; line-height: 1.5;">This verification code will expire in <strong>10 minutes</strong>. Never share this code with anyone. If you did not initiate this request, please change your password immediately.</p>
+        </div>
+      `,
+    });
 
-    return { ok: true, devOtp: process.env.NODE_ENV !== "production" ? otp : undefined };
+    return { ok: true };
   } catch (err) {
     console.error("[OTP Generate Error]:", err);
     return { ok: false, error: "Failed to generate verification code. Please try again." };
