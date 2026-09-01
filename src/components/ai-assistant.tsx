@@ -241,7 +241,7 @@ What topic would you like to explore? Choose a suggestion below or type your que
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-full border border-[#8B5E34] bg-[#8B5E34] px-4 py-3 text-white font-semibold shadow-[0_8px_30px_rgba(139,94,52,0.3)] transition-all hover:scale-105 hover:bg-[#754E29] hover:shadow-[0_12px_36px_rgba(139,94,52,0.4)] cursor-pointer group"
+          className="fixed bottom-6 right-6 z-50 hidden md:flex items-center gap-2.5 rounded-full border border-[#8B5E34] bg-[#8B5E34] px-4 py-3 text-white font-semibold shadow-[0_8px_30px_rgba(139,94,52,0.3)] transition-all hover:scale-105 hover:bg-[#754E29] hover:shadow-[0_12px_36px_rgba(139,94,52,0.4)] cursor-pointer group"
           title="Open Help & Support"
         >
           <div className="relative flex h-7 w-7 items-center justify-center rounded-full bg-white/20">
@@ -257,7 +257,7 @@ What topic would you like to explore? Choose a suggestion below or type your que
 
       {/* ─── Chat Window Modal ─────────────────────────── */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 flex h-[580px] w-[92vw] max-w-[420px] flex-col overflow-hidden rounded-3xl border border-[#E5D9C5] bg-white shadow-[0_20px_60px_rgba(51,40,30,0.15),0_0_0_1px_#E5D9C5] animate-fade-up">
+        <div className="fixed bottom-6 right-6 z-50 hidden md:flex h-[580px] w-[92vw] max-w-[420px] flex-col overflow-hidden rounded-3xl border border-[#E5D9C5] bg-white shadow-[0_20px_60px_rgba(51,40,30,0.15),0_0_0_1px_#E5D9C5] animate-fade-up">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-[#E5D9C5] bg-[#F9F8F6] px-5 py-4">
             <div className="flex items-center gap-3">
