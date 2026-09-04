@@ -72,6 +72,8 @@ export async function generateAndSendEmailOtp(params: {
         ? "Verify your XYRO Account"
         : params.type === "LOGIN_2FA"
         ? "Your XYRO 2FA Login Code"
+        : params.type === "PASSWORD_RESET"
+        ? "Your XYRO Password Reset Code"
         : "Your XYRO Verification Code";
 
     const title =
@@ -79,12 +81,16 @@ export async function generateAndSendEmailOtp(params: {
         ? "Account Email Verification"
         : params.type === "LOGIN_2FA"
         ? "Two-Factor Authentication Code"
+        : params.type === "PASSWORD_RESET"
+        ? "Reset Your Password"
         : "Verification Code";
 
     const description =
       params.type === "SIGNUP"
         ? "Thank you for registering with XYRO. Enter this 6-digit code to activate your account and access your workspace."
-        : "A login attempt was initiated for your XYRO account. Enter this 6-digit verification code to complete your login.";
+        : params.type === "LOGIN_2FA"
+        ? "A login attempt was initiated for your XYRO account. Enter this 6-digit verification code to complete your login."
+        : "We received a request to reset your XYRO password. Enter this 6-digit verification code to set your new password.";
 
     await sendAppEmail({
       to: normalizedEmail,

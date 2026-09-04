@@ -26,6 +26,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const rawCallback = searchParams.get("callbackUrl");
   const isVerified = searchParams.get("verified") === "true";
+  const isReset = searchParams.get("reset") === "true";
 
   const [activeRole, setActiveRole] = useState<LoginRole>("GYM");
   const [identifier, setIdentifier] = useState("");
@@ -297,6 +298,12 @@ function LoginForm() {
             {isVerified && (
               <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-800 text-center font-medium">
                 ✅ Your email has been verified! You can now log in.
+              </div>
+            )}
+
+            {isReset && (
+              <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-800 text-center font-medium">
+                ✅ Password reset successfully! Please sign in with your new password.
               </div>
             )}
 

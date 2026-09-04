@@ -11,7 +11,7 @@ const plans = [
     tagline: "For private trainers & emerging personal gyms.",
     features: [
       "Up to 50 active athletes",
-      "Digital QR passport generation",
+      "Digital QR generation",
       "Manual front-desk check-in logs",
       "Cash & manual payment ledger",
       "Standard client profiles",

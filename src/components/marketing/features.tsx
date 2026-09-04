@@ -1,16 +1,10 @@
 import {
-  Users,
   CreditCard,
-  ScanLine,
+  BellRing,
   Dumbbell,
   Salad,
-  BellRing,
-  BarChart3,
-  ShieldCheck,
   CalendarDays,
-  Sparkles,
-  ArrowUpRight,
-  CheckCircle2,
+  ShieldCheck,
 } from "lucide-react";
 
 const capabilities = [
@@ -100,11 +94,6 @@ export function Features() {
               <p className="mt-3 text-xs md:text-sm leading-relaxed text-[#8C7A6B]">
                 {c.desc}
               </p>
-            </div>
-
-            <div className="mt-6 flex items-center gap-1 text-xs font-semibold text-[#8B5E34] pt-4 border-t border-[#E5D9C5] opacity-80 group-hover:opacity-100 transition-opacity">
-              <span>Explore Capability</span>
-              <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </div>
           </div>
         ))}

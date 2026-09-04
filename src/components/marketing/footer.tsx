@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Logo } from "./logo";
-import { ShieldCheck, Activity } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
 const columns = [
   {
@@ -43,10 +43,6 @@ export function Footer() {
             <p className="max-w-xs text-xs md:text-sm leading-relaxed text-[#8C7A6B]">
               The high-performance operating system for modern health gyms and fitness centers. Engineered with zero compromise.
             </p>
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-semibold text-emerald-800 font-mono">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
-              <span>All Systems Operational (99.98% SLA)</span>
-            </div>
           </div>
 
           {columns.map((c) => (
