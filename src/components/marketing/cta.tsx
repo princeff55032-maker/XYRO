@@ -1,17 +1,11 @@
 import Link from "next/link";
-import { ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, ShieldCheck } from "lucide-react";
 
 export function CTA() {
   return (
     <section className="relative mx-auto max-w-6xl px-6 py-24 md:py-32">
       <div className="relative overflow-hidden rounded-[2.5rem] border border-[#E5D9C5] bg-white px-8 py-16 text-center md:py-24 shadow-[0_12px_40px_rgba(51,40,30,0.05)]">
-        {/* Asymmetrical Floating Badge Overlap */}
-        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 sm:left-12 sm:translate-x-0 rounded-full border border-[#E5D9C5] bg-[#F9F8F6] px-4 py-1 text-[11px] font-bold text-[#8B5E34] shadow-sm flex items-center gap-1.5 font-mono">
-          <Sparkles className="h-3.5 w-3.5 text-[#8B5E34]" />
-          <span>JOIN OVER 1,200+ HEALTH GYMS NATIONWIDE</span>
-        </div>
-
-        <div className="relative pt-3">
+        <div className="relative">
           <h2 className="mx-auto max-w-3xl font-display font-bold text-[#33281E] text-fluid-headline">
             Elevate Your Fitness Facility to{" "}
             <span className="text-[#8B5E34]">Institutional Standards.</span>

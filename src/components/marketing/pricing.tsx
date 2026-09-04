@@ -152,13 +152,6 @@ export function Pricing() {
           </div>
         ))}
       </div>
-
-      {/* Trust & Guarantee Note */}
-      <div className="mt-12 text-center text-xs text-[#8C7A6B]">
-        <p>
-          Need custom enterprise hardware integrations? All plans include a 14-day zero-risk trial. No credit card required.
-        </p>
-      </div>
     </section>
   );
 }
