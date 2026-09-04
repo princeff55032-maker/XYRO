@@ -3,6 +3,7 @@
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/db";
 import { generateMemberQrToken } from "@/lib/qr-token";
+import { sendMemberInvoiceEmail } from "@/lib/invoice-email";
 
 export type QrPassActionResult =
   | {
@@ -166,7 +167,7 @@ export async function renewMemberPlanOnlineAction(params?: {
       });
 
       // Automatically record in Payment Ledger
-      await tx.payment.create({
+      const payment = await tx.payment.create({
         data: {
           gymId: member.gymId,
           memberId: member.id,
@@ -194,8 +195,15 @@ export async function renewMemberPlanOnlineAction(params?: {
         },
       });
 
-      return { membership, endDate };
+      return { membership, paymentId: payment.id, endDate };
     });
+
+    sendMemberInvoiceEmail({
+      gymId: member.gymId,
+      memberId: member.id,
+      paymentId: result.paymentId,
+      membershipId: result.membership.id,
+    }).catch((err) => console.error("[Invoice Email Error]:", err));
 
     const { logAuditEvent } = await import("@/lib/audit");
     await logAuditEvent({

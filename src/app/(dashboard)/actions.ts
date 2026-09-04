@@ -20,6 +20,7 @@ import {
   getGymSubscription,
 } from "@/lib/subscriptions";
 import { createDeviceApiKey, rotateDeviceApiKey } from "@/lib/device-auth";
+import { sendMemberInvoiceEmail } from "@/lib/invoice-email";
 
 export type ActionResult<T = unknown> = {
   ok: boolean;
@@ -130,6 +131,8 @@ export async function addMemberAction(input: {
     const passwordHash = await bcrypt.hash(rawPassword, 10);
 
     let createdMemberId: string = "";
+    let createdPaymentId: string | undefined;
+    let createdMembershipId: string | undefined;
 
     await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
@@ -174,6 +177,7 @@ export async function addMemberAction(input: {
             autoRenew: false,
           },
         });
+        createdMembershipId = membership.id;
 
         // Compute discount
         const basePrice = plan.price;
@@ -186,7 +190,7 @@ export async function addMemberAction(input: {
         discountAmount = Math.round(discountAmount * 100) / 100;
         const totalAmount = Math.max(0, Math.round((basePrice - discountAmount) * 100) / 100);
 
-        await tx.payment.create({
+        const payment = await tx.payment.create({
           data: {
             gymId: gym.id,
             memberId: member.id,
@@ -201,6 +205,7 @@ export async function addMemberAction(input: {
             notes: `New membership — ${plan.name}${discountAmount > 0 ? ` (Discount: ₹${discountAmount})` : ""}`,
           },
         });
+        createdPaymentId = payment.id;
       }
     });
 
@@ -212,6 +217,15 @@ export async function addMemberAction(input: {
       resourceId: createdMemberId,
       metadata: { name: data.name, memberId, email: data.email },
     });
+
+    if (createdPaymentId && createdMemberId) {
+      sendMemberInvoiceEmail({
+        gymId: gym.id,
+        memberId: createdMemberId,
+        paymentId: createdPaymentId,
+        membershipId: createdMembershipId,
+      }).catch((err) => console.error("[Invoice Email Error]:", err));
+    }
 
     return {
       ok: true,
@@ -610,6 +624,9 @@ export async function assignPlanToMemberAction(input: {
     discountAmount = Math.round(discountAmount * 100) / 100;
     const totalAmount = Math.max(0, Math.round((basePrice - discountAmount) * 100) / 100);
 
+    let createdPaymentId: string | undefined;
+    let createdMembershipId: string | undefined;
+
     await prisma.$transaction(async (tx) => {
       const now = new Date();
       const existing = await tx.membership.findFirst({
@@ -632,9 +649,10 @@ export async function assignPlanToMemberAction(input: {
           autoRenew: false,
         },
       });
+      createdMembershipId = membership.id;
 
       // Automatically record in payment ledger with discounts
-      await tx.payment.create({
+      const payment = await tx.payment.create({
         data: {
           gymId: gym.id,
           memberId: member.id,
@@ -651,6 +669,7 @@ export async function assignPlanToMemberAction(input: {
             `Plan Assigned — ${plan.name}${discountAmount > 0 ? ` (Discount: ₹${discountAmount})` : ""}`,
         },
       });
+      createdPaymentId = payment.id;
     });
 
     await logAuditEvent({
@@ -661,6 +680,15 @@ export async function assignPlanToMemberAction(input: {
       resourceId: member.id,
       metadata: { planName: plan.name, basePrice, discount: discountAmount, totalAmount },
     });
+
+    if (createdPaymentId) {
+      sendMemberInvoiceEmail({
+        gymId: gym.id,
+        memberId: member.id,
+        paymentId: createdPaymentId,
+        membershipId: createdMembershipId,
+      }).catch((err) => console.error("[Invoice Email Error]:", err));
+    }
 
     return { ok: true };
   } catch (e) {
@@ -873,6 +901,7 @@ export async function recordPaymentAction(input: {
     if (!member) return { ok: false, error: "Member not found" };
 
     let membershipId: string | undefined;
+    let createdPaymentId: string | undefined;
 
     await prisma.$transaction(async (tx) => {
       if (input.planId) {
@@ -904,7 +933,7 @@ export async function recordPaymentAction(input: {
         }
       }
 
-      await tx.payment.create({
+      const payment = await tx.payment.create({
         data: {
           gymId: gym.id,
           memberId: member.id,
@@ -919,6 +948,7 @@ export async function recordPaymentAction(input: {
           notes: data.notes,
         },
       });
+      createdPaymentId = payment.id;
     });
 
     await logAuditEvent({
@@ -928,6 +958,15 @@ export async function recordPaymentAction(input: {
       resource: "payment",
       metadata: { memberId: data.memberId, amount: data.amount, method: data.method },
     });
+
+    if (createdPaymentId) {
+      sendMemberInvoiceEmail({
+        gymId: gym.id,
+        memberId: member.id,
+        paymentId: createdPaymentId,
+        membershipId,
+      }).catch((err) => console.error("[Invoice Email Error]:", err));
+    }
 
     return { ok: true };
   } catch (e) {
@@ -1077,6 +1116,69 @@ export async function deletePaymentAction(input: {
   paymentId: string;
 }): Promise<ActionResult> {
   return voidPaymentAction({ paymentId: input.paymentId, reason: "Archived by Administrator" });
+}
+
+export async function sendPaymentInvoiceEmailAction(
+  paymentId: string
+): Promise<ActionResult<{ invoiceNumber?: string; recipient?: string }>> {
+  try {
+    const ctx = await requireWorkspaceAuth(
+      ["GYM_OWNER", "GYM_ADMIN", "RECEPTIONIST", "SUPER_ADMIN"],
+      { requireEmailVerified: true }
+    );
+    requirePermission(ctx, "payments.view");
+
+    const payment = await prisma.payment.findFirst({
+      where: { id: paymentId, gymId: ctx.gym.id },
+      include: {
+        member: {
+          include: {
+            user: true,
+          },
+        },
+      },
+    });
+
+    if (!payment) {
+      return { ok: false, error: "Payment record not found" };
+    }
+
+    const result = await sendMemberInvoiceEmail({
+      gymId: ctx.gym.id,
+      memberId: payment.memberId,
+      paymentId: payment.id,
+      membershipId: payment.membershipId,
+    });
+
+    if (!result.sent) {
+      if (result.reason === "no_valid_recipient_email") {
+        return {
+          ok: false,
+          error: `Member (${payment.member?.user?.email || "No Email"}) has no valid external email address.`,
+        };
+      }
+      if (result.reason === "email_disabled_in_gym_settings") {
+        return {
+          ok: false,
+          error: "Email notifications are disabled in your Gym Settings.",
+        };
+      }
+      return {
+        ok: false,
+        error: result.error || "Failed to dispatch email invoice.",
+      };
+    }
+
+    return {
+      ok: true,
+      data: {
+        invoiceNumber: result.invoiceNumber,
+        recipient: result.recipientEmail,
+      },
+    };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
 }
 
 /* ------------------------------------------------------------------ */

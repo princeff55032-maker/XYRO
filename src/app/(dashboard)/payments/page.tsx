@@ -2,7 +2,7 @@ import { requireTenant } from "@/lib/tenant";
 import prisma from "@/lib/db";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { RecordPaymentDialog, ModifyPaymentDialog } from "./payments-form";
+import { RecordPaymentDialog, ModifyPaymentDialog, EmailInvoiceButton } from "./payments-form";
 import { ExportPaymentsButton } from "./export-payments-button";
 
 export const metadata = { title: "Payments" };
@@ -156,17 +156,23 @@ export default async function PaymentsPage() {
                       {formatDate(p.paidAt || p.createdAt)}
                     </td>
                     <td className="px-4 py-3.5 text-right">
-                      <ModifyPaymentDialog
-                        payment={{
-                          id: p.id,
-                          memberName: p.member.user.name,
-                          amount: p.totalAmount,
-                          method: p.method,
-                          status: p.status,
-                          notes: p.notes,
-                          paidAt: p.paidAt || p.createdAt,
-                        }}
-                      />
+                      <div className="flex items-center justify-end gap-1.5">
+                        <EmailInvoiceButton
+                          paymentId={p.id}
+                          memberName={p.member?.user?.name}
+                        />
+                        <ModifyPaymentDialog
+                          payment={{
+                            id: p.id,
+                            memberName: p.member?.user?.name || "Direct Walk-in",
+                            amount: p.totalAmount,
+                            method: p.method,
+                            status: p.status,
+                            notes: p.notes,
+                            paidAt: p.paidAt || p.createdAt,
+                          }}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}

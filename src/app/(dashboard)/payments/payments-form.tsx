@@ -11,6 +11,9 @@ import {
   AlertTriangle,
   RotateCcw,
   ShieldAlert,
+  Mail,
+  Check,
+  AlertCircle,
 } from "lucide-react";
 import {
   Dialog,
@@ -33,6 +36,7 @@ import {
   updatePaymentAction,
   refundPaymentAction,
   voidPaymentAction,
+  sendPaymentInvoiceEmailAction,
 } from "../actions";
 import { formatCurrency } from "@/lib/utils";
 
@@ -630,5 +634,91 @@ export function ModifyPaymentDialog({
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+export function EmailInvoiceButton({
+  paymentId,
+  memberName,
+}: {
+  paymentId: string;
+  memberName?: string;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  const handleSend = async () => {
+    setLoading(true);
+    setStatus("idle");
+    setFeedback(null);
+
+    const res = await sendPaymentInvoiceEmailAction(paymentId);
+    setLoading(false);
+
+    if (res.ok) {
+      setStatus("success");
+      setFeedback(`Delivered to ${res.data?.recipient || "member"}!`);
+      setTimeout(() => {
+        setStatus("idle");
+        setFeedback(null);
+      }, 4500);
+    } else {
+      setStatus("error");
+      setFeedback(res.error || "Failed to send invoice");
+      setTimeout(() => {
+        setStatus("idle");
+        setFeedback(null);
+      }, 5000);
+    }
+  };
+
+  return (
+    <div className="relative inline-flex items-center">
+      <button
+        type="button"
+        onClick={handleSend}
+        disabled={loading}
+        title={feedback || "Email Tax Invoice & Receipt to Member"}
+        className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition cursor-pointer disabled:opacity-50 ${
+          status === "success"
+            ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+            : status === "error"
+            ? "border-red-300 bg-red-50 text-red-700"
+            : "border-[#E5D9C5] bg-white text-[#33281E] hover:border-[#8B5E34] hover:text-[#8B5E34] hover:bg-[#FAF9F7]"
+        }`}
+      >
+        {loading ? (
+          <Loader2 className="h-3 w-3 animate-spin text-[#8B5E34]" />
+        ) : status === "success" ? (
+          <Check className="h-3 w-3 text-emerald-600" />
+        ) : status === "error" ? (
+          <AlertCircle className="h-3 w-3 text-red-600" />
+        ) : (
+          <Mail className="h-3 w-3 text-[#8B5E34]" />
+        )}
+        <span>
+          {loading
+            ? "Sending..."
+            : status === "success"
+            ? "Sent"
+            : status === "error"
+            ? "Failed"
+            : "Email Invoice"}
+        </span>
+      </button>
+
+      {feedback && (
+        <span
+          className={`absolute bottom-full right-0 mb-1.5 z-40 whitespace-nowrap rounded-md px-2.5 py-1 text-[10px] font-medium shadow-md ${
+            status === "success"
+              ? "bg-emerald-900 text-white"
+              : "bg-red-900 text-white"
+          }`}
+        >
+          {feedback}
+        </span>
+      )}
+    </div>
   );
 }

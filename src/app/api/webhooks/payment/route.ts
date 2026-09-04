@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import prisma from "@/lib/db";
 import { logAuditEvent } from "@/lib/audit";
+import { sendMemberInvoiceEmail } from "@/lib/invoice-email";
 
 /**
  * Validates cryptographic webhook signatures (Cashfree / Razorpay / Stripe standard)
@@ -176,6 +177,14 @@ export async function POST(req: Request) {
         memberId: existingPayment.member.memberId,
       },
     });
+
+    // 7. Trigger Branded Tax Invoice Email (Non-blocking)
+    sendMemberInvoiceEmail({
+      gymId: existingPayment.gymId,
+      memberId: existingPayment.memberId,
+      paymentId: existingPayment.id,
+      membershipId: existingPayment.membershipId,
+    }).catch((err) => console.error("[Webhook Invoice Email Error]:", err));
 
     return NextResponse.json({
       received: true,
