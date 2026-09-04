@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import { addMemberAction, type MemberCredentials } from "../actions";
 import { formatCurrency } from "@/lib/utils";
+import { CustomTimeSlotPicker } from "@/components/time-slot-picker";
 
 export function AddMemberDialog({
   plans,
@@ -393,11 +394,9 @@ Select "Login as Gym Member" to access your Digital QR Pass, workout routines, a
                   </Select>
 
                   {form.timeSlot === "CUSTOM" && (
-                    <input
+                    <CustomTimeSlotPicker
                       value={form.customTimeSlot}
-                      onChange={(e) => set("customTimeSlot", e.target.value)}
-                      placeholder="e.g. 05:30 AM - 07:00 AM"
-                      className={`mt-2 ${inputCls}`}
+                      onChange={(v) => set("customTimeSlot", v)}
                     />
                   )}
                 </div>

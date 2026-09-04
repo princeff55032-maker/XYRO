@@ -42,6 +42,7 @@ import {
   updateMembershipAction,
 } from "../actions";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { CustomTimeSlotPicker } from "@/components/time-slot-picker";
 
 export interface ActiveMembershipInfo {
   id: string;
@@ -439,11 +440,9 @@ export function MemberActions({
               </Select>
 
               {editForm.timeSlot === "CUSTOM" && (
-                <input
+                <CustomTimeSlotPicker
                   value={editForm.customTimeSlot}
-                  onChange={(e) => setEditForm({ ...editForm, customTimeSlot: e.target.value })}
-                  placeholder="e.g. 05:30 AM - 07:00 AM"
-                  className={`mt-2 ${inputCls}`}
+                  onChange={(v) => setEditForm({ ...editForm, customTimeSlot: v })}
                 />
               )}
             </div>
