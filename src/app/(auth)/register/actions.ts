@@ -44,10 +44,19 @@ export async function registerGymAction(
     };
   }
 
-  const existing = await prisma.user.findUnique({ where: { email: data.email.toLowerCase() } });
+  const normalizedEmail = data.email.trim().toLowerCase();
+  const normalizedPhone = data.phone?.trim();
 
-  if (existing) {
-    return { ok: false, error: "An account with this email already exists. Try logging in." };
+  const existingEmail = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+  if (existingEmail) {
+    return { ok: false, error: "An account with this email address already exists. Please sign in instead." };
+  }
+
+  if (normalizedPhone) {
+    const existingPhone = await prisma.user.findUnique({ where: { phone: normalizedPhone } });
+    if (existingPhone) {
+      return { ok: false, error: "An account with this mobile number already exists. Please sign in or use a different number." };
+    }
   }
 
   const gymCount = await prisma.gym.count();

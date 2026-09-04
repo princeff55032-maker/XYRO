@@ -4,12 +4,27 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
 import { signIn } from "next-auth/react";
-import { Loader2, Check, X, ShieldCheck, ShieldAlert } from "lucide-react";
+import {
+  Loader2,
+  Check,
+  X,
+  ShieldCheck,
+  ShieldAlert,
+  Building2,
+  User,
+  Phone,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import { registerGymAction } from "./actions";
 
 const inputCls =
-  "h-11 w-full rounded-xl border border-[#E5D9C5] bg-[#F9F8F6] px-4 text-sm text-[#33281E] placeholder:text-[#8C7A6B]/60 outline-none transition-all focus:border-[#8B5E34] focus:bg-white focus:ring-2 focus:ring-[#8B5E34]/15";
+  "h-11 w-full rounded-xl border border-[#E5D9C5] bg-[#F9F8F6] pl-10 pr-4 text-sm text-[#33281E] placeholder:text-[#8C7A6B]/60 outline-none transition-all focus:border-[#8B5E34] focus:bg-white focus:ring-2 focus:ring-[#8B5E34]/15";
 
+const inputNoIconCls =
+  "h-11 w-full rounded-xl border border-[#E5D9C5] bg-[#F9F8F6] px-4 text-sm text-[#33281E] placeholder:text-[#8C7A6B]/60 outline-none transition-all focus:border-[#8B5E34] focus:bg-white focus:ring-2 focus:ring-[#8B5E34]/15";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -27,6 +42,8 @@ export default function RegisterPage() {
     gstNumber: "",
     termsAccepted: false,
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -68,6 +85,11 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(null);
 
+    if (!form.phone.trim()) {
+      setError("Please enter your mobile phone number.");
+      return;
+    }
+
     if (strengthScore < 5) {
       setError("Please satisfy all password complexity requirements (minimum 12 characters, uppercase, lowercase, number, and symbol).");
       return;
@@ -85,15 +107,20 @@ export default function RegisterPage() {
 
     setLoading(true);
 
-    const result = await registerGymAction(form);
-    if (!result.ok) {
-      setError(result.error);
-      setLoading(false);
-      return;
-    }
+    try {
+      const result = await registerGymAction(form);
+      if (!result.ok) {
+        setError(result.error);
+        setLoading(false);
+        return;
+      }
 
-    // Redirect to 6-digit email OTP verification screen
-    router.push(`/verify-otp?email=${encodeURIComponent(form.email)}`);
+      // Redirect to 6-digit email OTP verification screen
+      router.push(`/verify-otp?email=${encodeURIComponent(form.email)}`);
+    } catch {
+      setError("Something went wrong during registration. Please try again.");
+      setLoading(false);
+    }
   }
 
   return (
@@ -116,68 +143,85 @@ export default function RegisterPage() {
 
       <form onSubmit={onSubmit} className="mt-8 space-y-5">
         <div className="grid gap-5 sm:grid-cols-2">
+          {/* Gym Name */}
           <div className="sm:col-span-2">
-            <label htmlFor="gymName" className="mb-1.5 block text-sm font-semibold text-[#33281E]">
+            <label htmlFor="gymName" className="mb-1.5 block text-xs font-semibold text-[#33281E]">
               Gym Name <span className="text-red-500">*</span>
             </label>
-            <input
-              id="gymName"
-              required
-              value={form.gymName}
-              onChange={(e) => set("gymName", e.target.value)}
-              placeholder="Iron Temple Fitness"
-              className={inputCls}
-            />
+            <div className="relative">
+              <Building2 className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8C7A6B]" />
+              <input
+                id="gymName"
+                required
+                value={form.gymName}
+                onChange={(e) => set("gymName", e.target.value)}
+                placeholder="Iron Temple Fitness"
+                className={inputCls}
+              />
+            </div>
           </div>
 
+          {/* Owner Full Name */}
           <div>
-            <label htmlFor="ownerName" className="mb-1.5 block text-sm font-semibold text-[#33281E]">
-              Your Name <span className="text-red-500">*</span>
+            <label htmlFor="ownerName" className="mb-1.5 block text-xs font-semibold text-[#33281E]">
+              Your Full Name <span className="text-red-500">*</span>
             </label>
-            <input
-              id="ownerName"
-              required
-              value={form.ownerName}
-              onChange={(e) => set("ownerName", e.target.value)}
-              placeholder="Aarav Sharma"
-              className={inputCls}
-            />
+            <div className="relative">
+              <User className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8C7A6B]" />
+              <input
+                id="ownerName"
+                required
+                value={form.ownerName}
+                onChange={(e) => set("ownerName", e.target.value)}
+                placeholder="Aarav Sharma"
+                className={inputCls}
+              />
+            </div>
           </div>
 
+          {/* Mobile Number */}
           <div>
-            <label htmlFor="phone" className="mb-1.5 block text-sm font-semibold text-[#33281E]">
-              Phone <span className="text-red-500">*</span>
+            <label htmlFor="phone" className="mb-1.5 block text-xs font-semibold text-[#33281E]">
+              Mobile Number <span className="text-red-500">*</span>
             </label>
-            <input
-              id="phone"
-              required
-              type="tel"
-              value={form.phone}
-              onChange={(e) => set("phone", e.target.value)}
-              placeholder="+91 98765 43210"
-              className={inputCls}
-            />
+            <div className="relative">
+              <Phone className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8C7A6B]" />
+              <input
+                id="phone"
+                required
+                type="tel"
+                value={form.phone}
+                onChange={(e) => set("phone", e.target.value)}
+                placeholder="+91 98765 43210"
+                className={inputCls}
+              />
+            </div>
           </div>
 
+          {/* Account Email */}
           <div className="sm:col-span-2">
-            <label htmlFor="email" className="mb-1.5 block text-sm font-semibold text-[#33281E]">
-              Email <span className="text-red-500">*</span>
+            <label htmlFor="email" className="mb-1.5 block text-xs font-semibold text-[#33281E]">
+              Work / Account Email <span className="text-red-500">*</span>
             </label>
-            <input
-              id="email"
-              required
-              type="email"
-              autoComplete="email"
-              value={form.email}
-              onChange={(e) => set("email", e.target.value)}
-              placeholder="you@gym.com"
-              className={inputCls}
-            />
+            <div className="relative">
+              <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8C7A6B]" />
+              <input
+                id="email"
+                required
+                type="email"
+                autoComplete="email"
+                value={form.email}
+                onChange={(e) => set("email", e.target.value)}
+                placeholder="you@gym.com"
+                className={inputCls}
+              />
+            </div>
           </div>
 
+          {/* Password */}
           <div className="sm:col-span-2">
             <div className="flex items-center justify-between mb-1.5">
-              <label htmlFor="password" className="block text-sm font-semibold text-[#33281E]">
+              <label htmlFor="password" className="block text-xs font-semibold text-[#33281E]">
                 Password <span className="text-red-500">*</span>
               </label>
               {form.password && (
@@ -186,16 +230,26 @@ export default function RegisterPage() {
                 </span>
               )}
             </div>
-            <input
-              id="password"
-              required
-              type="password"
-              minLength={12}
-              value={form.password}
-              onChange={(e) => set("password", e.target.value)}
-              placeholder="Minimum 12 characters"
-              className={inputCls}
-            />
+            <div className="relative">
+              <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8C7A6B]" />
+              <input
+                id="password"
+                required
+                type={showPassword ? "text" : "password"}
+                minLength={12}
+                value={form.password}
+                onChange={(e) => set("password", e.target.value)}
+                placeholder="Minimum 12 characters"
+                className="h-11 w-full rounded-xl border border-[#E5D9C5] bg-[#F9F8F6] pl-10 pr-10 text-sm text-[#33281E] placeholder:text-[#8C7A6B]/60 outline-none transition-all focus:border-[#8B5E34] focus:bg-white focus:ring-2 focus:ring-[#8B5E34]/15"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#8C7A6B] hover:text-[#33281E] cursor-pointer"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
 
             {/* Password Strength Progress Bar */}
             {form.password && (
@@ -232,62 +286,77 @@ export default function RegisterPage() {
             </div>
           </div>
 
+          {/* Confirm Password */}
           <div className="sm:col-span-2">
-            <label htmlFor="confirmPassword" className="mb-1.5 block text-sm font-semibold text-[#33281E]">
+            <label htmlFor="confirmPassword" className="mb-1.5 block text-xs font-semibold text-[#33281E]">
               Confirm Password <span className="text-red-500">*</span>
             </label>
-            <input
-              id="confirmPassword"
-              required
-              type="password"
-              value={form.confirmPassword}
-              onChange={(e) => set("confirmPassword", e.target.value)}
-              placeholder="Repeat password"
-              className={inputCls}
-            />
+            <div className="relative">
+              <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8C7A6B]" />
+              <input
+                id="confirmPassword"
+                required
+                type={showConfirmPassword ? "text" : "password"}
+                value={form.confirmPassword}
+                onChange={(e) => set("confirmPassword", e.target.value)}
+                placeholder="Repeat password"
+                className="h-11 w-full rounded-xl border border-[#E5D9C5] bg-[#F9F8F6] pl-10 pr-10 text-sm text-[#33281E] placeholder:text-[#8C7A6B]/60 outline-none transition-all focus:border-[#8B5E34] focus:bg-white focus:ring-2 focus:ring-[#8B5E34]/15"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#8C7A6B] hover:text-[#33281E] cursor-pointer"
+              >
+                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            {form.confirmPassword && form.password !== form.confirmPassword && (
+              <p className="mt-1 text-xs text-red-600">Passwords do not match.</p>
+            )}
           </div>
 
+          {/* Optional Gym Details */}
           <div className="sm:col-span-2">
-            <label htmlFor="address" className="mb-1.5 block text-sm font-semibold text-[#33281E]">
-              Gym Address
+            <label htmlFor="address" className="mb-1.5 block text-xs font-semibold text-[#33281E]">
+              Gym Address <span className="text-[#8C7A6B] font-normal">(optional)</span>
             </label>
             <input
               id="address"
               value={form.address}
               onChange={(e) => set("address", e.target.value)}
               placeholder="Street, area, landmark"
-              className={inputCls}
+              className={inputNoIconCls}
             />
           </div>
 
           <div>
-            <label htmlFor="city" className="mb-1.5 block text-sm font-semibold text-[#33281E]">
-              City
+            <label htmlFor="city" className="mb-1.5 block text-xs font-semibold text-[#33281E]">
+              City <span className="text-[#8C7A6B] font-normal">(optional)</span>
             </label>
             <input
               id="city"
               value={form.city}
               onChange={(e) => set("city", e.target.value)}
               placeholder="Mumbai"
-              className={inputCls}
+              className={inputNoIconCls}
             />
           </div>
 
           <div>
-            <label htmlFor="state" className="mb-1.5 block text-sm font-semibold text-[#33281E]">
-              State
+            <label htmlFor="state" className="mb-1.5 block text-xs font-semibold text-[#33281E]">
+              State <span className="text-[#8C7A6B] font-normal">(optional)</span>
             </label>
             <input
               id="state"
               value={form.state}
               onChange={(e) => set("state", e.target.value)}
               placeholder="Maharashtra"
-              className={inputCls}
+              className={inputNoIconCls}
             />
           </div>
 
           <div className="sm:col-span-2">
-            <label htmlFor="gst" className="mb-1.5 block text-sm font-semibold text-[#33281E]">
+            <label htmlFor="gst" className="mb-1.5 block text-xs font-semibold text-[#33281E]">
               GST Number <span className="text-[#8C7A6B] font-normal">(optional)</span>
             </label>
             <input
@@ -295,43 +364,43 @@ export default function RegisterPage() {
               value={form.gstNumber}
               onChange={(e) => set("gstNumber", e.target.value)}
               placeholder="27ABCDE1234F1Z5"
-              className={inputCls}
+              className={inputNoIconCls}
             />
           </div>
         </div>
 
-        <div
-          className="flex cursor-pointer items-start gap-3 text-sm text-[#8C7A6B]"
-          onClick={() => set("termsAccepted", !form.termsAccepted)}
-        >
-          <span
-            className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
-              form.termsAccepted
-                ? "border-[#8B5E34] bg-[#8B5E34] text-white"
-                : "border-[#E5D9C5] bg-[#F9F8F6]"
-            }`}
-          >
-            {form.termsAccepted && <Check className="h-3.5 w-3.5 text-white" />}
-          </span>
+        {/* Terms */}
+        <label className="flex items-start gap-3 pt-2 text-xs text-[#8C7A6B] cursor-pointer">
+          <input
+            type="checkbox"
+            checked={form.termsAccepted}
+            onChange={(e) => set("termsAccepted", e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-[#E5D9C5] text-[#8B5E34] focus:ring-[#8B5E34]"
+          />
           <span>
             I agree to XYRO&apos;s{" "}
-            <span className="text-[#33281E] font-semibold underline decoration-[#8B5E34] underline-offset-2">Terms of Service</span>{" "}
+            <Link href="/terms" className="font-semibold text-[#8B5E34] underline">
+              Terms of Service
+            </Link>{" "}
             and{" "}
-            <span className="text-[#33281E] font-semibold underline decoration-[#8B5E34] underline-offset-2">Privacy Policy</span>,
-            and I confirm I&apos;m authorized to operate this gym.
+            <Link href="/privacy" className="font-semibold text-[#8B5E34] underline">
+              Privacy Policy
+            </Link>
+            , and I confirm I&apos;m authorized to operate this gym.
           </span>
-        </div>
+        </label>
 
+        {/* Submit */}
         <button
           type="submit"
           disabled={loading}
           className="btn-primary inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold text-white shadow-[0_4px_18px_rgba(139,94,52,0.22)] transition-all duration-300 ease-in-out hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60 cursor-pointer"
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-          {loading ? "Creating your workspace…" : "Create My XYRO Workspace"}
+          {loading ? "Creating Workspace & Sending OTP…" : "Create My XYRO Workspace"}
         </button>
 
-        <div className="relative my-4">
+        <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-[#E5D9C5]" />
           </div>
@@ -342,6 +411,7 @@ export default function RegisterPage() {
           </div>
         </div>
 
+        {/* Google SSO */}
         <button
           type="button"
           onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
@@ -367,15 +437,17 @@ export default function RegisterPage() {
           </svg>
           <span>Continue with Google</span>
         </button>
-      </form>
 
-      <p className="mt-7 text-center text-sm text-[#8C7A6B]">
-        Already have a workspace?{" "}
-        <Link href="/login" className="font-semibold text-[#8B5E34] transition-colors hover:underline">
-          Login
-        </Link>
-      </p>
+        <p className="text-center text-xs text-[#8C7A6B]">
+          Already have a workspace?{" "}
+          <Link
+            href="/login"
+            className="font-semibold text-[#8B5E34] transition-colors hover:underline"
+          >
+            Login
+          </Link>
+        </p>
+      </form>
     </div>
   );
 }
-
