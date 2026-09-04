@@ -17,14 +17,19 @@ function getTransporter() {
 
   const cleanPass = smtpPass.replace(/\s+/g, "");
 
-  // Gmail-specific optimized transport
+  // Gmail-specific transport with explicit port 465 SSL & timeouts for cloud/serverless reliability
   if (process.env.EMAIL_PROVIDER === "gmail" || smtpUser.includes("@gmail.com")) {
     return nodemailer.createTransport({
-      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
       auth: {
         user: smtpUser,
         pass: cleanPass,
       },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
     });
   }
 
@@ -39,6 +44,9 @@ function getTransporter() {
       user: smtpUser,
       pass: cleanPass,
     },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
   });
 }
 
@@ -49,8 +57,12 @@ function getTransporter() {
  * 3. Falls back to console log in development
  */
 export async function sendAppEmail(options: SendEmailOptions): Promise<{ ok: boolean; error?: string }> {
-  const fromEmail = process.env.EMAIL_FROM || process.env.SMTP_USER || "XYRO Fitness <noreply@xyro.fitness>";
+  const smtpUser = process.env.SMTP_USER;
+  const fromEmail =
+    process.env.EMAIL_FROM ||
+    (smtpUser ? `"XYRO Fitness" <${smtpUser}>` : "XYRO Fitness <noreply@xyro.fitness>");
   const normalizedTo = options.to.trim().toLowerCase();
+  let lastError: string | undefined;
 
   // 1. Try Gmail / SMTP via Nodemailer
   const mailer = getTransporter();
@@ -66,8 +78,11 @@ export async function sendAppEmail(options: SendEmailOptions): Promise<{ ok: boo
       console.log(`[Email Delivered via Gmail SMTP]: Message ID: ${info.messageId} to ${normalizedTo}`);
       return { ok: true };
     } catch (err: any) {
+      lastError = `Gmail SMTP Error: ${err?.message || err}`;
       console.error("[Gmail SMTP Error]:", err?.message || err);
     }
+  } else {
+    lastError = "SMTP credentials (SMTP_USER / SMTP_PASS) not configured in environment";
   }
 
   // 2. Fallback to Resend API if configured
@@ -91,12 +106,19 @@ export async function sendAppEmail(options: SendEmailOptions): Promise<{ ok: boo
       if (res.ok) {
         console.log(`[Email Delivered via Resend]: to ${normalizedTo}`);
         return { ok: true };
+      } else {
+        const errorText = await res.text();
+        lastError = `Resend Error: ${errorText}`;
       }
-    } catch (sendErr) {
+    } catch (sendErr: any) {
+      lastError = `Resend Fetch Error: ${sendErr?.message || sendErr}`;
       console.error("[Resend API Error]:", sendErr);
     }
   }
 
-  console.log(`[Email (Console Fallback)]: to ${normalizedTo} | Subject: ${options.subject}`);
-  return { ok: true };
+  console.warn(`[Email Delivery Failed]: ${lastError} | Target: ${normalizedTo}`);
+  return {
+    ok: false,
+    error: lastError || "No active email service configured",
+  };
 }
