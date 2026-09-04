@@ -10,7 +10,7 @@ const steps = [
   {
     num: "02",
     tag: "DISTRIBUTION",
-    title: "Deploy Digital QR Passports",
+    title: "Deploy Digital QR",
     desc: "Generate branded Apple/Google Wallet compatible digital passes. Members receive instant credentials over WhatsApp with dynamic anti-screenshot protection.",
   },
   {

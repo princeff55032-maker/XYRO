@@ -926,21 +926,7 @@ export function SettingsClient({
                   </div>
                 </div>
 
-                <div className="mt-5 grid gap-3 sm:grid-cols-3 md:grid-cols-5">
-                  <label className="flex items-center gap-3 rounded-xl border border-[#E5D9C5] bg-white p-3 text-xs font-semibold text-[#33281E] cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={ops.expiryReminder30Days}
-                      onChange={(e) =>
-                        setOps((o) => ({
-                          ...o,
-                          expiryReminder30Days: e.target.checked,
-                        }))
-                      }
-                      className="rounded accent-[#8B5E34]"
-                    />
-                    30 Days Before
-                  </label>
+                <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
 
                   <label className="flex items-center gap-3 rounded-xl border border-[#E5D9C5] bg-white p-3 text-xs font-semibold text-[#33281E] cursor-pointer">
                     <input
@@ -1261,45 +1247,6 @@ export function SettingsClient({
 
         {/* 6. Security & Audit Logs Tab */}
         <TabsContent value="audit" className="space-y-6">
-          {/* Hardware & External Service Health Monitoring */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-2xl border border-[#E5D9C5] bg-white p-4 shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-mono font-bold text-[#8C7A6B] uppercase">Turnstile Controller</span>
-                <Badge variant="success" className="text-[10px]">Online</Badge>
-              </div>
-              <p className="mt-2 text-xs font-semibold text-[#33281E]">Biometric Relay 01</p>
-              <p className="mt-0.5 text-[11px] text-[#8C7A6B] font-mono">Last ping: 1 min ago</p>
-            </div>
-
-            <div className="rounded-2xl border border-[#E5D9C5] bg-white p-4 shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-mono font-bold text-[#8C7A6B] uppercase">WhatsApp Gateway</span>
-                <Badge variant="success" className="text-[10px]">Operational</Badge>
-              </div>
-              <p className="mt-2 text-xs font-semibold text-[#33281E]">Template Engine</p>
-              <p className="mt-0.5 text-[11px] text-[#8C7A6B] font-mono">Latency: 140ms</p>
-            </div>
-
-            <div className="rounded-2xl border border-[#E5D9C5] bg-white p-4 shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-mono font-bold text-[#8C7A6B] uppercase">Cloud Database</span>
-                <Badge variant="success" className="text-[10px]">Connected</Badge>
-              </div>
-              <p className="mt-2 text-xs font-semibold text-[#33281E]">Supabase Pooler</p>
-              <p className="mt-0.5 text-[11px] text-[#8C7A6B] font-mono">Status: 99.98% uptime</p>
-            </div>
-
-            <div className="rounded-2xl border border-[#E5D9C5] bg-white p-4 shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-mono font-bold text-[#8C7A6B] uppercase">Payment Gateways</span>
-                <Badge variant="success" className="text-[10px]">Active</Badge>
-              </div>
-              <p className="mt-2 text-xs font-semibold text-[#33281E]">UPI, Cards &amp; Web3</p>
-              <p className="mt-0.5 text-[11px] text-[#8C7A6B] font-mono">Auto-reconciliation on</p>
-            </div>
-          </div>
-
           {/* Immutable Audit Log Table */}
           <div className="rounded-3xl border border-[#E5D9C5] bg-white p-6 md:p-8 shadow-[0_4px_20px_rgba(51,40,30,0.03)]">
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#E5D9C5] pb-4">

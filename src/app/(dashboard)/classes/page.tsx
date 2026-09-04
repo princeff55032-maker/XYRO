@@ -32,7 +32,7 @@ export default async function ClassesPage() {
             "Publish weekly HIIT, Yoga, and Spin gym timetables",
             "Hard capacity capping with automated waitlisting",
             "Coach & instructor assignment per session",
-            "Direct member booking from member mobile passport",
+            "Direct member booking from member mobile portal",
           ]}
         />
       </div>
