@@ -181,50 +181,33 @@ export async function deleteGymPermanentAction(gymId: string): Promise<AdminActi
       .filter((m) => m.user?.role === "CUSTOMER")
       .map((m) => m.userId);
 
-    await prisma.$transaction(async (tx) => {
-      // Clean non-cascading or ordering-sensitive dependencies
-      await tx.auditLog.deleteMany({ where: { gymId } });
-      await tx.supportTicket.deleteMany({ where: { gymId } });
-      await tx.invoice.deleteMany({ where: { gymId } });
-      await tx.payment.deleteMany({ where: { gymId } });
-      await tx.attendance.deleteMany({ where: { gymId } });
-      await tx.classBooking.deleteMany({ where: { gymClass: { gymId } } });
-      await tx.gymClass.deleteMany({ where: { gymId } });
-      await tx.progressRecord.deleteMany({ where: { member: { gymId } } });
-      await tx.workoutExercise.deleteMany({ where: { workoutPlan: { gymId } } });
-      await tx.workoutPlan.deleteMany({ where: { gymId } });
-      await tx.dietMeal.deleteMany({ where: { dietPlan: { gymId } } });
-      await tx.dietPlan.deleteMany({ where: { gymId } });
-      await tx.membership.deleteMany({ where: { gymId } });
-      await tx.membershipPlan.deleteMany({ where: { gymId } });
-      await tx.member.deleteMany({ where: { gymId } });
-      await tx.trainer.deleteMany({ where: { gymId } });
-      await tx.gymStaff.deleteMany({ where: { gymId } });
-      await tx.gymSubscription.deleteMany({ where: { gymId } });
-      await tx.gymSettings.deleteMany({ where: { gymId } });
-      await tx.announcement.deleteMany({ where: { gymId } });
-      await tx.notification.deleteMany({ where: { gymId } });
-      await tx.notificationTemplate.deleteMany({ where: { gymId } });
-      await tx.whatsAppLog.deleteMany({ where: { gymId } });
-      await tx.whatsAppSettings.deleteMany({ where: { gymId } });
-      await tx.equipment.deleteMany({ where: { gymId } });
-      await tx.expense.deleteMany({ where: { gymId } });
-      await tx.lead.deleteMany({ where: { gymId } });
-      await tx.accessDevice.deleteMany({ where: { gymId } });
+    await prisma.$transaction(
+      async (tx) => {
+        // Clean non-cascading relations
+        await tx.auditLog.deleteMany({ where: { gymId } });
+        await tx.supportTicket.deleteMany({ where: { gymId } });
 
-      // Delete the Gym
-      await tx.gym.delete({ where: { id: gymId } });
-
-      // Delete orphan customer accounts that belonged to this gym
-      if (customerUserIds.length > 0) {
-        await tx.auditLog.deleteMany({ where: { userId: { in: customerUserIds } } });
-        await tx.supportTicket.deleteMany({ where: { userId: { in: customerUserIds } } });
-        await tx.notification.deleteMany({ where: { userId: { in: customerUserIds } } });
-        await tx.user.deleteMany({
-          where: { id: { in: customerUserIds }, role: "CUSTOMER" },
+        // Unlink member -> trainer reference to avoid foreign key constraints during cascade
+        await tx.member.updateMany({
+          where: { gymId },
+          data: { trainerId: null },
         });
-      }
-    });
+
+        // Delete the Gym (PostgreSQL automatically cascades all 20+ child models in one query)
+        await tx.gym.delete({ where: { id: gymId } });
+
+        // Delete orphan customer accounts that belonged to this gym
+        if (customerUserIds.length > 0) {
+          await tx.auditLog.deleteMany({ where: { userId: { in: customerUserIds } } });
+          await tx.supportTicket.deleteMany({ where: { userId: { in: customerUserIds } } });
+          await tx.notification.deleteMany({ where: { userId: { in: customerUserIds } } });
+          await tx.user.deleteMany({
+            where: { id: { in: customerUserIds }, role: "CUSTOMER" },
+          });
+        }
+      },
+      { maxWait: 15000, timeout: 60000 }
+    );
 
     await logAuditEvent({
       userId: admin.id,
@@ -267,30 +250,33 @@ export async function deleteMemberPermanentAction(memberId: string): Promise<Adm
     const userId = member.userId;
     const isCustomerUser = member.user?.role === "CUSTOMER";
 
-    await prisma.$transaction(async (tx) => {
-      // 1. Clean relations that reference member
-      await tx.classBooking.deleteMany({ where: { memberId } });
-      await tx.progressRecord.deleteMany({ where: { memberId } });
-      await tx.workoutPlan.deleteMany({ where: { memberId } });
-      await tx.dietPlan.deleteMany({ where: { memberId } });
-      await tx.attendance.deleteMany({ where: { memberId } });
-      await tx.invoice.deleteMany({ where: { payment: { memberId } } });
-      await tx.payment.deleteMany({ where: { memberId } });
-      await tx.membership.deleteMany({ where: { memberId } });
+    await prisma.$transaction(
+      async (tx) => {
+        // 1. Clean relations that reference member
+        await tx.classBooking.deleteMany({ where: { memberId } });
+        await tx.progressRecord.deleteMany({ where: { memberId } });
+        await tx.workoutPlan.deleteMany({ where: { memberId } });
+        await tx.dietPlan.deleteMany({ where: { memberId } });
+        await tx.attendance.deleteMany({ where: { memberId } });
+        await tx.invoice.deleteMany({ where: { payment: { memberId } } });
+        await tx.payment.deleteMany({ where: { memberId } });
+        await tx.membership.deleteMany({ where: { memberId } });
 
-      // 2. Clean un-cascaded logs/tickets for this user
-      await tx.auditLog.deleteMany({ where: { userId } });
-      await tx.supportTicket.deleteMany({ where: { userId } });
-      await tx.notification.deleteMany({ where: { userId } });
+        // 2. Clean un-cascaded logs/tickets for this user
+        await tx.auditLog.deleteMany({ where: { userId } });
+        await tx.supportTicket.deleteMany({ where: { userId } });
+        await tx.notification.deleteMany({ where: { userId } });
 
-      // 3. Delete the Member record
-      await tx.member.delete({ where: { id: memberId } });
+        // 3. Delete the Member record
+        await tx.member.delete({ where: { id: memberId } });
 
-      // 4. Delete the User account if it is a pure CUSTOMER
-      if (isCustomerUser) {
-        await tx.user.delete({ where: { id: userId } });
-      }
-    });
+        // 4. Delete the User account if it is a pure CUSTOMER
+        if (isCustomerUser) {
+          await tx.user.delete({ where: { id: userId } });
+        }
+      },
+      { maxWait: 15000, timeout: 60000 }
+    );
 
     await logAuditEvent({
       userId: admin.id,
@@ -351,33 +337,36 @@ export async function deleteUserPermanentAction(userId: string): Promise<AdminAc
       };
     }
 
-    await prisma.$transaction(async (tx) => {
-      if (targetUser.member) {
-        const memberId = targetUser.member.id;
-        await tx.classBooking.deleteMany({ where: { memberId } });
-        await tx.progressRecord.deleteMany({ where: { memberId } });
-        await tx.workoutPlan.deleteMany({ where: { memberId } });
-        await tx.dietPlan.deleteMany({ where: { memberId } });
-        await tx.attendance.deleteMany({ where: { memberId } });
-        await tx.invoice.deleteMany({ where: { payment: { memberId } } });
-        await tx.payment.deleteMany({ where: { memberId } });
-        await tx.membership.deleteMany({ where: { memberId } });
-        await tx.member.delete({ where: { id: memberId } });
-      }
+    await prisma.$transaction(
+      async (tx) => {
+        if (targetUser.member) {
+          const memberId = targetUser.member.id;
+          await tx.classBooking.deleteMany({ where: { memberId } });
+          await tx.progressRecord.deleteMany({ where: { memberId } });
+          await tx.workoutPlan.deleteMany({ where: { memberId } });
+          await tx.dietPlan.deleteMany({ where: { memberId } });
+          await tx.attendance.deleteMany({ where: { memberId } });
+          await tx.invoice.deleteMany({ where: { payment: { memberId } } });
+          await tx.payment.deleteMany({ where: { memberId } });
+          await tx.membership.deleteMany({ where: { memberId } });
+          await tx.member.delete({ where: { id: memberId } });
+        }
 
-      if (targetUser.trainer) {
-        await tx.trainer.delete({ where: { id: targetUser.trainer.id } });
-      }
+        if (targetUser.trainer) {
+          await tx.trainer.delete({ where: { id: targetUser.trainer.id } });
+        }
 
-      await tx.gymStaff.deleteMany({ where: { userId } });
-      await tx.auditLog.deleteMany({ where: { userId } });
-      await tx.supportTicket.deleteMany({ where: { userId } });
-      await tx.notification.deleteMany({ where: { userId } });
-      await tx.account.deleteMany({ where: { userId } });
-      await tx.session.deleteMany({ where: { userId } });
+        await tx.gymStaff.deleteMany({ where: { userId } });
+        await tx.auditLog.deleteMany({ where: { userId } });
+        await tx.supportTicket.deleteMany({ where: { userId } });
+        await tx.notification.deleteMany({ where: { userId } });
+        await tx.account.deleteMany({ where: { userId } });
+        await tx.session.deleteMany({ where: { userId } });
 
-      await tx.user.delete({ where: { id: userId } });
-    });
+        await tx.user.delete({ where: { id: userId } });
+      },
+      { maxWait: 15000, timeout: 60000 }
+    );
 
     await logAuditEvent({
       userId: admin.id,
