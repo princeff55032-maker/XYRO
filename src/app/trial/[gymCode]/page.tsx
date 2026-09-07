@@ -27,6 +27,7 @@ export default async function PublicTrialPage({
 }: {
   params: Promise<{ gymCode: string }>;
 }) {
+  const { gymCode } = await params;
   const code = (gymCode || "").toUpperCase();
   const gym = await prisma.gym.findUnique({
     where: { gymCode: code },

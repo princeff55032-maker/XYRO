@@ -42,13 +42,26 @@ import {
   AlertCircle,
   Send,
   Trash2,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { formatDate, formatCurrency, getInitials } from "@/lib/utils";
 import {
   toggleGymStatusAction,
   updateGymSubscriptionAction,
+  deleteGymAction,
+  deleteGymPermanentAction,
+  deleteMemberPermanentAction,
+  deleteUserPermanentAction,
   toggleUserStatusAction,
   forcePasswordResetAction,
   createAnnouncementAction,
@@ -154,9 +167,29 @@ interface AnnouncementData {
   gymName: string | null;
 }
 
+interface MemberData {
+  id: string;
+  memberId: string;
+  name: string;
+  email: string;
+  phone: string;
+  userStatus: string;
+  isActive: boolean;
+  gymId: string;
+  gymName: string;
+  gymCode: string;
+  planName: string;
+  membershipEnd: Date | null;
+  membershipStatus: string;
+  timeSlot: string | null;
+  joinDate: Date;
+  createdAt: Date;
+}
+
 interface SuperAdminClientProps {
   analytics: Analytics;
   gyms: GymData[];
+  members?: MemberData[];
   recentUsers: UserData[];
   recentActivity: ActivityItem[];
   announcements: AnnouncementData[];
@@ -353,6 +386,7 @@ function DonutChartSVG({ data, colors }: {
 export function SuperAdminClient({
   analytics,
   gyms,
+  members = [],
   recentUsers,
   recentActivity,
   announcements,
@@ -360,12 +394,23 @@ export function SuperAdminClient({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  const [activeTab, setActiveTab] = useState<"overview" | "revenue" | "gyms" | "users">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "revenue" | "gyms" | "members" | "users">("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [userRoleFilter, setUserRoleFilter] = useState<string>("ALL");
   const [userSearch, setUserSearch] = useState("");
+  const [memberSearch, setMemberSearch] = useState("");
+  const [memberGymFilter, setMemberGymFilter] = useState("ALL");
+  const [memberStatusFilter, setMemberStatusFilter] = useState("ALL");
   const [expandedGym, setExpandedGym] = useState<string | null>(null);
+
+  // Deletion modals state
+  const [gymToDelete, setGymToDelete] = useState<GymData | null>(null);
+  const [isDeletingGym, setIsDeletingGym] = useState(false);
+  const [memberToDelete, setMemberToDelete] = useState<MemberData | null>(null);
+  const [isDeletingMember, setIsDeletingMember] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserData | null>(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
 
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -406,6 +451,54 @@ export function SuperAdminClient({
         router.refresh();
       } else {
         showFeedback("error", res.error || "Failed to update subscription.");
+      }
+    });
+  };
+
+  const confirmDeleteGym = () => {
+    if (!gymToDelete) return;
+    setIsDeletingGym(true);
+    startTransition(async () => {
+      const res = await deleteGymPermanentAction(gymToDelete.id);
+      setIsDeletingGym(false);
+      if (res.ok) {
+        showFeedback("success", `Gym "${gymToDelete.name}" (${gymToDelete.gymCode}) and all tenant records have been permanently wiped.`);
+        setGymToDelete(null);
+        router.refresh();
+      } else {
+        showFeedback("error", res.error || "Failed to permanently delete gym.");
+      }
+    });
+  };
+
+  const confirmDeleteMember = () => {
+    if (!memberToDelete) return;
+    setIsDeletingMember(true);
+    startTransition(async () => {
+      const res = await deleteMemberPermanentAction(memberToDelete.id);
+      setIsDeletingMember(false);
+      if (res.ok) {
+        showFeedback("success", `Member "${memberToDelete.name}" (${memberToDelete.memberId}) has been permanently deleted.`);
+        setMemberToDelete(null);
+        router.refresh();
+      } else {
+        showFeedback("error", res.error || "Failed to permanently delete member.");
+      }
+    });
+  };
+
+  const confirmDeleteUser = () => {
+    if (!userToDelete) return;
+    setIsDeletingUser(true);
+    startTransition(async () => {
+      const res = await deleteUserPermanentAction(userToDelete.id);
+      setIsDeletingUser(false);
+      if (res.ok) {
+        showFeedback("success", `User account "${userToDelete.email}" has been deleted.`);
+        setUserToDelete(null);
+        router.refresh();
+      } else {
+        showFeedback("error", res.error || "Failed to delete user.");
       }
     });
   };
@@ -465,6 +558,30 @@ export function SuperAdminClient({
     });
   }, [gyms, searchQuery, statusFilter]);
 
+  const filteredMembers = useMemo(() => {
+    return (members || []).filter((m) => {
+      const q = memberSearch.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        m.name.toLowerCase().includes(q) ||
+        m.memberId.toLowerCase().includes(q) ||
+        m.email.toLowerCase().includes(q) ||
+        m.phone.toLowerCase().includes(q) ||
+        m.gymName.toLowerCase().includes(q) ||
+        m.gymCode.toLowerCase().includes(q);
+
+      const matchesGym = memberGymFilter === "ALL" ? true : m.gymId === memberGymFilter;
+      const matchesStatus =
+        memberStatusFilter === "ALL"
+          ? true
+          : memberStatusFilter === "ACTIVE"
+          ? m.isActive
+          : !m.isActive;
+
+      return matchesSearch && matchesGym && matchesStatus;
+    });
+  }, [members, memberSearch, memberGymFilter, memberStatusFilter]);
+
   const filteredUsers = useMemo(() => {
     return recentUsers.filter((u) => {
       const matchesSearch =
@@ -475,12 +592,22 @@ export function SuperAdminClient({
     });
   }, [recentUsers, userSearch, userRoleFilter]);
 
+  // Unique gyms for member filter
+  const uniqueGyms = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const g of gyms) {
+      map.set(g.id, `${g.name} (${g.gymCode})`);
+    }
+    return Array.from(map.entries());
+  }, [gyms]);
+
   // ── Tab config ─────────────────────────────────────────────
 
   const tabs = [
     { key: "overview" as const, label: "Overview", icon: Activity },
     { key: "revenue" as const, label: "Revenue & Analytics", icon: BarChart3 },
     { key: "gyms" as const, label: `Gyms (${gyms.length})`, icon: Building2 },
+    { key: "members" as const, label: `Members (${(members || []).length})`, icon: Dumbbell },
     { key: "users" as const, label: `Users (${recentUsers.length})`, icon: Users },
   ];
 
@@ -1016,6 +1143,14 @@ export function SuperAdminClient({
                                 {g.status === "ACTIVE" ? "Suspend" : "Activate"}
                               </Button>
                               <button
+                                disabled={isPending}
+                                onClick={() => setGymToDelete(g)}
+                                title="Permanently Delete Gym"
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition cursor-pointer disabled:opacity-50"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                              <button
                                 onClick={() => setExpandedGym(expandedGym === g.id ? null : g.id)}
                                 className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E5D9C5] bg-[#F9F8F6] text-[#8C7A6B] hover:bg-white transition cursor-pointer"
                               >
@@ -1064,7 +1199,137 @@ export function SuperAdminClient({
       )}
 
       {/* ════════════════════════════════════════════════════
-          TAB 4: USERS & SECURITY
+          TAB: MEMBERS DIRECTORY
+         ════════════════════════════════════════════════════ */}
+      {activeTab === "members" && (
+        <div className="space-y-4">
+          {/* Search & Filter */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-[220px]">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#8C7A6B]" />
+              <input
+                type="text"
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+                placeholder="Search member ID, name, email, phone, or gym..."
+                className="h-10 w-full rounded-xl border border-[#E5D9C5] bg-white pl-9 pr-3 text-xs text-[#33281E] placeholder:text-[#8C7A6B]/50 outline-none transition focus:border-[#8B5E34] focus:ring-2 focus:ring-[#8B5E34]/15"
+              />
+            </div>
+            <select
+              value={memberGymFilter}
+              onChange={(e) => setMemberGymFilter(e.target.value)}
+              className="h-10 rounded-xl border border-[#E5D9C5] bg-white px-3 text-xs text-[#33281E] outline-none focus:border-[#8B5E34]"
+            >
+              <option value="ALL">All Gyms</option>
+              {uniqueGyms.map(([id, label]) => (
+                <option key={id} value={id}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <select
+              value={memberStatusFilter}
+              onChange={(e) => setMemberStatusFilter(e.target.value)}
+              className="h-10 rounded-xl border border-[#E5D9C5] bg-white px-3 text-xs text-[#33281E] outline-none focus:border-[#8B5E34]"
+            >
+              <option value="ALL">All Status</option>
+              <option value="ACTIVE">Active Only</option>
+              <option value="INACTIVE">Inactive Only</option>
+            </select>
+            <div className="text-xs text-[#8C7A6B]">
+              Showing {filteredMembers.length} of {(members || []).length} members
+            </div>
+          </div>
+
+          {/* Members Table */}
+          <div className="rounded-3xl overflow-hidden border border-[#E5D9C5] bg-white shadow-[0_4px_20px_rgba(51,40,30,0.03)]">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[#E5D9C5] bg-[#F9F8F6] text-left text-[10px] uppercase font-bold text-[#8C7A6B]">
+                    <th className="py-4 px-4">Member</th>
+                    <th className="py-4 px-3">Gym / Workspace</th>
+                    <th className="py-4 px-3">Contact</th>
+                    <th className="py-4 px-3">Plan & Expiry</th>
+                    <th className="py-4 px-3">Status</th>
+                    <th className="py-4 px-3">Joined</th>
+                    <th className="py-4 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E5D9C5]">
+                  {filteredMembers.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-xs text-[#8C7A6B]">
+                        No member records matching search or filter criteria.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredMembers.map((m) => (
+                      <tr key={m.id} className="transition hover:bg-[#FAF9F7]">
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#8B5E34] text-xs font-bold text-white shadow-sm">
+                              {getInitials(m.name)}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-[#33281E] text-xs">{m.name}</p>
+                              <p className="font-mono text-[10px] text-[#8B5E34] font-semibold">{m.memberId}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 px-3">
+                          <p className="font-semibold text-[#33281E] text-xs">{m.gymName}</p>
+                          <span className="inline-flex items-center rounded-md bg-[#F9F8F6] px-1.5 py-0.5 text-[10px] font-mono font-medium text-[#8C7A6B] border border-[#E5D9C5]">
+                            {m.gymCode}
+                          </span>
+                        </td>
+                        <td className="py-4 px-3 text-xs">
+                          <p className="text-[#33281E] font-medium">{m.phone || "—"}</p>
+                          <p className="text-[10px] text-[#8C7A6B] truncate max-w-[180px]">{m.email}</p>
+                        </td>
+                        <td className="py-4 px-3 text-xs">
+                          <span className="inline-flex items-center gap-1 font-semibold text-[#33281E]">
+                            {m.planName}
+                          </span>
+                          <p className="text-[10px] text-[#8C7A6B]">
+                            {m.membershipEnd ? `Expires: ${formatDate(m.membershipEnd)}` : "No active cycle"}
+                          </p>
+                        </td>
+                        <td className="py-4 px-3">
+                          <Badge
+                            variant={m.isActive ? "success" : "secondary"}
+                            className="text-[10px]"
+                          >
+                            {m.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </td>
+                        <td className="py-4 px-3 text-xs text-[#8C7A6B]">
+                          {formatDate(m.joinDate)}
+                        </td>
+                        <td className="py-4 px-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              disabled={isPending}
+                              onClick={() => setMemberToDelete(m)}
+                              title="Permanently Delete Member"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition cursor-pointer disabled:opacity-50"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════
+          TAB: USERS & SECURITY
          ════════════════════════════════════════════════════ */}
       {activeTab === "users" && (
         <div className="space-y-4">
@@ -1171,6 +1436,14 @@ export function SuperAdminClient({
                               >
                                 <KeyRound className="h-3 w-3" />
                               </button>
+                              <button
+                                disabled={isPending}
+                                onClick={() => setUserToDelete(u)}
+                                title="Permanently Delete User"
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition disabled:opacity-50 cursor-pointer"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
                             </>
                           )}
                           {u.role === "SUPER_ADMIN" && (
@@ -1186,6 +1459,244 @@ export function SuperAdminClient({
           </div>
         </div>
       )}
+
+      {/* ─── Modal: Permanent Gym Deletion ────────────────────────────── */}
+      <Dialog
+        open={!!gymToDelete}
+        onOpenChange={(open) => {
+          if (!open && !isDeletingGym) setGymToDelete(null);
+        }}
+      >
+        <DialogContent className="max-w-md rounded-3xl border border-[#E5D9C5] bg-white p-6 shadow-2xl">
+          <DialogHeader>
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-red-600 mb-2">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <DialogTitle className="font-display text-lg font-bold text-[#33281E]">
+              Permanently Delete Gym?
+            </DialogTitle>
+            <DialogDescription className="text-xs text-[#8C7A6B] leading-relaxed pt-1">
+              You are about to permanently erase <strong className="text-[#33281E] font-semibold">{gymToDelete?.name}</strong> (<span className="font-mono text-[#8B5E34]">{gymToDelete?.gymCode}</span>) and all associated workspace data.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2 text-xs">
+            <div className="rounded-2xl border border-red-200 bg-red-50/60 p-3.5 text-red-800 space-y-1.5">
+              <p className="font-semibold text-red-900 flex items-center gap-1.5">
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
+                This action is irreversible and executes a complete tenant wipe:
+              </p>
+              <ul className="list-disc pl-5 space-y-1 text-[11px] text-red-700">
+                <li>All gym members, profiles, and customer user accounts</li>
+                <li>All payment history, receipts, and invoices</li>
+                <li>All workout plans, diet charts, and class schedules</li>
+                <li>All attendance logs, trainer accounts, and staff credentials</li>
+              </ul>
+            </div>
+
+            {gymToDelete && (
+              <div className="rounded-2xl border border-[#E5D9C5] bg-[#F9F8F6] p-3.5 space-y-1 text-[#33281E]">
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-[#8C7A6B]">Owner:</span>
+                  <span className="font-medium">{gymToDelete.owner.name} ({gymToDelete.owner.email})</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-[#8C7A6B]">Total Members:</span>
+                  <span className="font-semibold">{gymToDelete._count.members}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-[#8C7A6B]">Total Processed Revenue:</span>
+                  <span className="font-semibold text-emerald-800">{formatCurrency(gymToDelete.totalRevenue)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isDeletingGym}
+              onClick={() => setGymToDelete(null)}
+              className="rounded-xl border-[#E5D9C5] text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={isDeletingGym}
+              onClick={confirmDeleteGym}
+              className="rounded-xl text-xs"
+            >
+              {isDeletingGym ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                  Wiping Gym...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                  Permanently Delete Gym
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Modal: Permanent Member Deletion ─────────────────────────── */}
+      <Dialog
+        open={!!memberToDelete}
+        onOpenChange={(open) => {
+          if (!open && !isDeletingMember) setMemberToDelete(null);
+        }}
+      >
+        <DialogContent className="max-w-md rounded-3xl border border-[#E5D9C5] bg-white p-6 shadow-2xl">
+          <DialogHeader>
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-red-600 mb-2">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <DialogTitle className="font-display text-lg font-bold text-[#33281E]">
+              Permanently Delete Member?
+            </DialogTitle>
+            <DialogDescription className="text-xs text-[#8C7A6B] leading-relaxed pt-1">
+              You are about to permanently delete member <strong className="text-[#33281E] font-semibold">{memberToDelete?.name}</strong> (<span className="font-mono text-[#8B5E34]">{memberToDelete?.memberId}</span>).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2 text-xs">
+            <div className="rounded-2xl border border-red-200 bg-red-50/60 p-3.5 text-red-800 space-y-1.5">
+              <p className="font-semibold text-red-900 flex items-center gap-1.5">
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
+                Permanent removal will erase:
+              </p>
+              <ul className="list-disc pl-5 space-y-1 text-[11px] text-red-700">
+                <li>Member profile, check-in history, and class bookings</li>
+                <li>Associated diet plans and workout routines</li>
+                <li>Customer user account (if pure customer login)</li>
+              </ul>
+            </div>
+
+            {memberToDelete && (
+              <div className="rounded-2xl border border-[#E5D9C5] bg-[#F9F8F6] p-3.5 space-y-1 text-[#33281E]">
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-[#8C7A6B]">Gym:</span>
+                  <span className="font-medium">{memberToDelete.gymName} ({memberToDelete.gymCode})</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-[#8C7A6B]">Email / Phone:</span>
+                  <span className="font-medium">{memberToDelete.email} · {memberToDelete.phone}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-[#8C7A6B]">Active Plan:</span>
+                  <span className="font-semibold text-[#8B5E34]">{memberToDelete.planName}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isDeletingMember}
+              onClick={() => setMemberToDelete(null)}
+              className="rounded-xl border-[#E5D9C5] text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={isDeletingMember}
+              onClick={confirmDeleteMember}
+              className="rounded-xl text-xs"
+            >
+              {isDeletingMember ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                  Deleting Member...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                  Permanently Delete Member
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Modal: Permanent User Deletion ───────────────────────────── */}
+      <Dialog
+        open={!!userToDelete}
+        onOpenChange={(open) => {
+          if (!open && !isDeletingUser) setUserToDelete(null);
+        }}
+      >
+        <DialogContent className="max-w-md rounded-3xl border border-[#E5D9C5] bg-white p-6 shadow-2xl">
+          <DialogHeader>
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-red-600 mb-2">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <DialogTitle className="font-display text-lg font-bold text-[#33281E]">
+              Delete User Account?
+            </DialogTitle>
+            <DialogDescription className="text-xs text-[#8C7A6B] leading-relaxed pt-1">
+              Are you sure you want to permanently delete user account <strong className="text-[#33281E] font-semibold">{userToDelete?.name}</strong> (<span className="font-mono text-[#8B5E34]">{userToDelete?.email}</span>)?
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2 text-xs">
+            <div className="rounded-2xl border border-[#E5D9C5] bg-[#F9F8F6] p-3.5 space-y-1 text-[#33281E]">
+              <div className="flex justify-between text-[11px]">
+                <span className="text-[#8C7A6B]">Role:</span>
+                <span className="font-medium">{userToDelete?.role}</span>
+              </div>
+              <div className="flex justify-between text-[11px]">
+                <span className="text-[#8C7A6B]">Status:</span>
+                <span className="font-medium">{userToDelete?.status}</span>
+              </div>
+            </div>
+            <p className="text-[11px] text-[#8C7A6B]">
+              Note: If this user is the registered owner of any active gym, the action will be rejected by system safeguards.
+            </p>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isDeletingUser}
+              onClick={() => setUserToDelete(null)}
+              className="rounded-xl border-[#E5D9C5] text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={isDeletingUser}
+              onClick={confirmDeleteUser}
+              className="rounded-xl text-xs"
+            >
+              {isDeletingUser ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                  Deleting User...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                  Delete User
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

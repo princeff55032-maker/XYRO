@@ -84,7 +84,7 @@ export default async function TrainerPortalPage() {
     );
   }
 
-  const formattedAssignedMembers = trainer.members.map((m) => ({
+  const formattedAssignedMembers = (trainer.members || []).map((m: any) => ({
     id: m.id,
     memberId: m.memberId,
     user: {
@@ -100,7 +100,7 @@ export default async function TrainerPortalPage() {
       ? {
           id: m.workoutPlans[0].id,
           name: m.workoutPlans[0].name,
-          exercises: m.workoutPlans[0].exercises.map((e) => ({
+          exercises: (m.workoutPlans[0].exercises || []).map((e: any) => ({
             id: e.id,
             dayOfWeek: e.dayOfWeek,
             exerciseName: e.exerciseName,
@@ -116,7 +116,7 @@ export default async function TrainerPortalPage() {
           id: m.dietPlans[0].id,
           name: m.dietPlans[0].name,
           totalCalories: m.dietPlans[0].totalCalories,
-          meals: m.dietPlans[0].meals.map((meal) => ({
+          meals: (m.dietPlans[0].meals || []).map((meal: any) => ({
             id: meal.id,
             mealType: meal.mealType,
             time: meal.time,
@@ -128,11 +128,11 @@ export default async function TrainerPortalPage() {
   }));
 
   const activeWorkoutsCount = formattedAssignedMembers.filter(
-    (m) => !!m.activeWorkoutPlan
+    (m: any) => !!m.activeWorkoutPlan
   ).length;
 
   const activeDietsCount = formattedAssignedMembers.filter(
-    (m) => !!m.activeDietPlan
+    (m: any) => !!m.activeDietPlan
   ).length;
 
   return (

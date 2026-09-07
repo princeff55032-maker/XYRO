@@ -23,6 +23,7 @@ export default async function SuperAdminPage() {
     recentUsers,
     totalUsersCount,
     announcements,
+    membersList,
   ] = await Promise.all([
     prisma.gym.findMany({
       where: { deletedAt: null },
@@ -88,6 +89,45 @@ export default async function SuperAdminPage() {
         createdAt: true,
         gym: { select: { name: true } },
       },
+    }),
+    prisma.member.findMany({
+      where: { deletedAt: null },
+      select: {
+        id: true,
+        memberId: true,
+        isActive: true,
+        joinDate: true,
+        createdAt: true,
+        timeSlot: true,
+        gym: {
+          select: {
+            id: true,
+            name: true,
+            gymCode: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            status: true,
+          },
+        },
+        memberships: {
+          where: { status: "ACTIVE" },
+          take: 1,
+          orderBy: { endDate: "desc" },
+          select: {
+            plan: { select: { name: true } },
+            endDate: true,
+            status: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 300,
     }),
   ]);
 
@@ -402,10 +442,30 @@ export default async function SuperAdminPage() {
     inactiveGyms: processedGyms.filter((g: (typeof processedGyms)[number]) => g.healthStatus === "inactive").length,
   };
 
+  const processedMembers = (membersList || []).map((m) => ({
+    id: m.id,
+    memberId: m.memberId,
+    name: m.user?.name || "Unnamed Member",
+    email: m.user?.email || "",
+    phone: m.user?.phone || "",
+    userStatus: m.user?.status || "ACTIVE",
+    isActive: m.isActive,
+    gymId: m.gym?.id || "",
+    gymName: m.gym?.name || "Unknown Gym",
+    gymCode: m.gym?.gymCode || "N/A",
+    planName: m.memberships[0]?.plan?.name || "No Active Plan",
+    membershipEnd: m.memberships[0]?.endDate || null,
+    membershipStatus: m.memberships[0]?.status || "NONE",
+    timeSlot: m.timeSlot,
+    joinDate: m.joinDate,
+    createdAt: m.createdAt,
+  }));
+
   return (
     <SuperAdminClient
       analytics={analytics}
       gyms={processedGyms}
+      members={processedMembers}
       recentUsers={recentUsers}
       recentActivity={recentActivity}
       announcements={announcements.map((a: (typeof announcements)[number]) => ({
