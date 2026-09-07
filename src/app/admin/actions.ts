@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import type { GymStatus, SubscriptionPlan, SubscriptionStatus, AccountStatus } from "@prisma/client";
@@ -52,6 +53,12 @@ export async function toggleGymStatusAction(
       resourceId: gymId,
       metadata: { newStatus, gymName: updated.name },
     });
+
+    try {
+      revalidatePath("/admin");
+    } catch {
+      // safe ignore
+    }
 
     return { ok: true };
   } catch (e) {
@@ -105,6 +112,12 @@ export async function updateGymSubscriptionAction(
       resourceId: gymId,
       metadata: { plan, status, price: finalPrice },
     });
+
+    try {
+      revalidatePath("/admin");
+    } catch {
+      // safe ignore
+    }
 
     return { ok: true };
   } catch (e) {
@@ -221,8 +234,16 @@ export async function deleteGymPermanentAction(gymId: string): Promise<AdminActi
       metadata: { gymName: gym.name, gymCode: gym.gymCode },
     });
 
+    try {
+      revalidatePath("/admin");
+      revalidatePath("/");
+    } catch {
+      // Revalidation in non-standard context safe ignore
+    }
+
     return { ok: true };
   } catch (e) {
+    console.error("[deleteGymPermanentAction Error]:", e);
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Failed to permanently delete gym",
@@ -285,8 +306,16 @@ export async function deleteMemberPermanentAction(memberId: string): Promise<Adm
       },
     });
 
+    try {
+      revalidatePath("/admin");
+      revalidatePath("/members");
+    } catch {
+      // Revalidation safe ignore
+    }
+
     return { ok: true };
   } catch (e) {
+    console.error("[deleteMemberPermanentAction Error]:", e);
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Failed to permanently delete member",
@@ -358,8 +387,15 @@ export async function deleteUserPermanentAction(userId: string): Promise<AdminAc
       metadata: { deletedEmail: targetUser.email, deletedName: targetUser.name, role: targetUser.role },
     });
 
+    try {
+      revalidatePath("/admin");
+    } catch {
+      // Revalidation safe ignore
+    }
+
     return { ok: true };
   } catch (e) {
+    console.error("[deleteUserPermanentAction Error]:", e);
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Failed to delete user",

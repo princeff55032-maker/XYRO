@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo, Fragment } from "react";
+import { useState, useTransition, useMemo, useEffect, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -404,6 +404,23 @@ export function SuperAdminClient({
   const [memberStatusFilter, setMemberStatusFilter] = useState("ALL");
   const [expandedGym, setExpandedGym] = useState<string | null>(null);
 
+  const [gymList, setGymList] = useState<GymData[]>(gyms);
+  const [memberList, setMemberList] = useState<MemberData[]>(members);
+  const [userList, setUserList] = useState<UserData[]>(recentUsers);
+  const [modalError, setModalError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setGymList(gyms);
+  }, [gyms]);
+
+  useEffect(() => {
+    setMemberList(members);
+  }, [members]);
+
+  useEffect(() => {
+    setUserList(recentUsers);
+  }, [recentUsers]);
+
   // Deletion modals state
   const [gymToDelete, setGymToDelete] = useState<GymData | null>(null);
   const [isDeletingGym, setIsDeletingGym] = useState(false);
@@ -435,6 +452,9 @@ export function SuperAdminClient({
     startTransition(async () => {
       const res = await toggleGymStatusAction(gymId, nextStatus);
       if (res.ok) {
+        setGymList((prev) =>
+          prev.map((g) => (g.id === gymId ? { ...g, status: nextStatus } : g))
+        );
         showFeedback("success", `Gym status updated to ${nextStatus}.`);
         router.refresh();
       } else {
@@ -457,15 +477,21 @@ export function SuperAdminClient({
 
   const confirmDeleteGym = () => {
     if (!gymToDelete) return;
+    const target = gymToDelete;
     setIsDeletingGym(true);
+    setModalError(null);
     startTransition(async () => {
-      const res = await deleteGymPermanentAction(gymToDelete.id);
+      const res = await deleteGymPermanentAction(target.id);
       setIsDeletingGym(false);
       if (res.ok) {
-        showFeedback("success", `Gym "${gymToDelete.name}" (${gymToDelete.gymCode}) and all tenant records have been permanently wiped.`);
+        // Optimistically remove immediately so UI reflects deletion in real time
+        setGymList((prev) => prev.filter((g) => g.id !== target.id));
+        setMemberList((prev) => prev.filter((m) => m.gymId !== target.id));
+        showFeedback("success", `Gym "${target.name}" (${target.gymCode}) and all tenant records have been permanently wiped.`);
         setGymToDelete(null);
         router.refresh();
       } else {
+        setModalError(res.error || "Failed to permanently delete gym.");
         showFeedback("error", res.error || "Failed to permanently delete gym.");
       }
     });
@@ -473,15 +499,20 @@ export function SuperAdminClient({
 
   const confirmDeleteMember = () => {
     if (!memberToDelete) return;
+    const target = memberToDelete;
     setIsDeletingMember(true);
+    setModalError(null);
     startTransition(async () => {
-      const res = await deleteMemberPermanentAction(memberToDelete.id);
+      const res = await deleteMemberPermanentAction(target.id);
       setIsDeletingMember(false);
       if (res.ok) {
-        showFeedback("success", `Member "${memberToDelete.name}" (${memberToDelete.memberId}) has been permanently deleted.`);
+        // Optimistically remove immediately from table
+        setMemberList((prev) => prev.filter((m) => m.id !== target.id));
+        showFeedback("success", `Member "${target.name}" (${target.memberId}) has been permanently deleted.`);
         setMemberToDelete(null);
         router.refresh();
       } else {
+        setModalError(res.error || "Failed to permanently delete member.");
         showFeedback("error", res.error || "Failed to permanently delete member.");
       }
     });
@@ -489,15 +520,19 @@ export function SuperAdminClient({
 
   const confirmDeleteUser = () => {
     if (!userToDelete) return;
+    const target = userToDelete;
     setIsDeletingUser(true);
+    setModalError(null);
     startTransition(async () => {
-      const res = await deleteUserPermanentAction(userToDelete.id);
+      const res = await deleteUserPermanentAction(target.id);
       setIsDeletingUser(false);
       if (res.ok) {
-        showFeedback("success", `User account "${userToDelete.email}" has been deleted.`);
+        setUserList((prev) => prev.filter((u) => u.id !== target.id));
+        showFeedback("success", `User account "${target.email}" has been deleted.`);
         setUserToDelete(null);
         router.refresh();
       } else {
+        setModalError(res.error || "Failed to delete user.");
         showFeedback("error", res.error || "Failed to delete user.");
       }
     });
@@ -547,7 +582,7 @@ export function SuperAdminClient({
   // ── Filters ────────────────────────────────────────────────
 
   const filteredGyms = useMemo(() => {
-    return gyms.filter((g) => {
+    return gymList.filter((g) => {
       const matchesSearch =
         g.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         g.gymCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -556,10 +591,10 @@ export function SuperAdminClient({
       const matchesStatus = statusFilter === "ALL" ? true : g.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [gyms, searchQuery, statusFilter]);
+  }, [gymList, searchQuery, statusFilter]);
 
   const filteredMembers = useMemo(() => {
-    return (members || []).filter((m) => {
+    return memberList.filter((m) => {
       const q = memberSearch.toLowerCase().trim();
       const matchesSearch =
         !q ||
@@ -580,35 +615,35 @@ export function SuperAdminClient({
 
       return matchesSearch && matchesGym && matchesStatus;
     });
-  }, [members, memberSearch, memberGymFilter, memberStatusFilter]);
+  }, [memberList, memberSearch, memberGymFilter, memberStatusFilter]);
 
   const filteredUsers = useMemo(() => {
-    return recentUsers.filter((u) => {
+    return userList.filter((u) => {
       const matchesSearch =
         u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
         u.email.toLowerCase().includes(userSearch.toLowerCase());
       const matchesRole = userRoleFilter === "ALL" ? true : u.role === userRoleFilter;
       return matchesSearch && matchesRole;
     });
-  }, [recentUsers, userSearch, userRoleFilter]);
+  }, [userList, userSearch, userRoleFilter]);
 
   // Unique gyms for member filter
   const uniqueGyms = useMemo(() => {
     const map = new Map<string, string>();
-    for (const g of gyms) {
+    for (const g of gymList) {
       map.set(g.id, `${g.name} (${g.gymCode})`);
     }
     return Array.from(map.entries());
-  }, [gyms]);
+  }, [gymList]);
 
   // ── Tab config ─────────────────────────────────────────────
 
   const tabs = [
     { key: "overview" as const, label: "Overview", icon: Activity },
     { key: "revenue" as const, label: "Revenue & Analytics", icon: BarChart3 },
-    { key: "gyms" as const, label: `Gyms (${gyms.length})`, icon: Building2 },
-    { key: "members" as const, label: `Members (${(members || []).length})`, icon: Dumbbell },
-    { key: "users" as const, label: `Users (${recentUsers.length})`, icon: Users },
+    { key: "gyms" as const, label: `Gyms (${gymList.length})`, icon: Building2 },
+    { key: "members" as const, label: `Members (${memberList.length})`, icon: Dumbbell },
+    { key: "users" as const, label: `Users (${userList.length})`, icon: Users },
   ];
 
   return (
@@ -1144,7 +1179,10 @@ export function SuperAdminClient({
                               </Button>
                               <button
                                 disabled={isPending}
-                                onClick={() => setGymToDelete(g)}
+                                onClick={() => {
+                                  setModalError(null);
+                                  setGymToDelete(g);
+                                }}
                                 title="Permanently Delete Gym"
                                 className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition cursor-pointer disabled:opacity-50"
                               >
@@ -1310,7 +1348,10 @@ export function SuperAdminClient({
                           <div className="flex items-center justify-end gap-2">
                             <button
                               disabled={isPending}
-                              onClick={() => setMemberToDelete(m)}
+                              onClick={() => {
+                                setModalError(null);
+                                setMemberToDelete(m);
+                              }}
                               title="Permanently Delete Member"
                               className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition cursor-pointer disabled:opacity-50"
                             >
@@ -1438,7 +1479,10 @@ export function SuperAdminClient({
                               </button>
                               <button
                                 disabled={isPending}
-                                onClick={() => setUserToDelete(u)}
+                                onClick={() => {
+                                  setModalError(null);
+                                  setUserToDelete(u);
+                                }}
                                 title="Permanently Delete User"
                                 className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition disabled:opacity-50 cursor-pointer"
                               >
@@ -1464,7 +1508,10 @@ export function SuperAdminClient({
       <Dialog
         open={!!gymToDelete}
         onOpenChange={(open) => {
-          if (!open && !isDeletingGym) setGymToDelete(null);
+          if (!open && !isDeletingGym) {
+            setGymToDelete(null);
+            setModalError(null);
+          }
         }}
       >
         <DialogContent className="max-w-md rounded-3xl border border-[#E5D9C5] bg-white p-6 shadow-2xl">
@@ -1481,6 +1528,13 @@ export function SuperAdminClient({
           </DialogHeader>
 
           <div className="space-y-3 py-2 text-xs">
+            {modalError && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-xs text-red-900 font-semibold flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-700" />
+                <span>{modalError}</span>
+              </div>
+            )}
+
             <div className="rounded-2xl border border-red-200 bg-red-50/60 p-3.5 text-red-800 space-y-1.5">
               <p className="font-semibold text-red-900 flex items-center gap-1.5">
                 <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
@@ -1517,7 +1571,10 @@ export function SuperAdminClient({
               variant="outline"
               size="sm"
               disabled={isDeletingGym}
-              onClick={() => setGymToDelete(null)}
+              onClick={() => {
+                setGymToDelete(null);
+                setModalError(null);
+              }}
               className="rounded-xl border-[#E5D9C5] text-xs"
             >
               Cancel
@@ -1549,7 +1606,10 @@ export function SuperAdminClient({
       <Dialog
         open={!!memberToDelete}
         onOpenChange={(open) => {
-          if (!open && !isDeletingMember) setMemberToDelete(null);
+          if (!open && !isDeletingMember) {
+            setMemberToDelete(null);
+            setModalError(null);
+          }
         }}
       >
         <DialogContent className="max-w-md rounded-3xl border border-[#E5D9C5] bg-white p-6 shadow-2xl">
@@ -1566,6 +1626,13 @@ export function SuperAdminClient({
           </DialogHeader>
 
           <div className="space-y-3 py-2 text-xs">
+            {modalError && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-xs text-red-900 font-semibold flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-700" />
+                <span>{modalError}</span>
+              </div>
+            )}
+
             <div className="rounded-2xl border border-red-200 bg-red-50/60 p-3.5 text-red-800 space-y-1.5">
               <p className="font-semibold text-red-900 flex items-center gap-1.5">
                 <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
@@ -1601,7 +1668,10 @@ export function SuperAdminClient({
               variant="outline"
               size="sm"
               disabled={isDeletingMember}
-              onClick={() => setMemberToDelete(null)}
+              onClick={() => {
+                setMemberToDelete(null);
+                setModalError(null);
+              }}
               className="rounded-xl border-[#E5D9C5] text-xs"
             >
               Cancel
@@ -1633,7 +1703,10 @@ export function SuperAdminClient({
       <Dialog
         open={!!userToDelete}
         onOpenChange={(open) => {
-          if (!open && !isDeletingUser) setUserToDelete(null);
+          if (!open && !isDeletingUser) {
+            setUserToDelete(null);
+            setModalError(null);
+          }
         }}
       >
         <DialogContent className="max-w-md rounded-3xl border border-[#E5D9C5] bg-white p-6 shadow-2xl">
@@ -1650,6 +1723,13 @@ export function SuperAdminClient({
           </DialogHeader>
 
           <div className="space-y-3 py-2 text-xs">
+            {modalError && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-xs text-red-900 font-semibold flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-700" />
+                <span>{modalError}</span>
+              </div>
+            )}
+
             <div className="rounded-2xl border border-[#E5D9C5] bg-[#F9F8F6] p-3.5 space-y-1 text-[#33281E]">
               <div className="flex justify-between text-[11px]">
                 <span className="text-[#8C7A6B]">Role:</span>
@@ -1670,7 +1750,10 @@ export function SuperAdminClient({
               variant="outline"
               size="sm"
               disabled={isDeletingUser}
-              onClick={() => setUserToDelete(null)}
+              onClick={() => {
+                setUserToDelete(null);
+                setModalError(null);
+              }}
               className="rounded-xl border-[#E5D9C5] text-xs"
             >
               Cancel
