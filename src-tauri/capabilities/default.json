@@ -4,9 +4,6 @@
   "description": "Default permissions for XYro - gym os",
   "windows": ["main"],
   "permissions": [
-    "core:default",
-    "single-instance:default",
-    "window-state:default",
-    "autostart:default"
+    "core:default"
   ]
 }
