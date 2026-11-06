@@ -1,0 +1,25 @@
+{
+  "cli": {
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "node": "22.13.0",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://xyro-murex.vercel.app"
+      }
+    },
+    "production": {
+      "distribution": "store",
+      "node": "22.13.0",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://xyro-murex.vercel.app"
+      },
+      "autoIncrement": true
+    }
+  }
+}

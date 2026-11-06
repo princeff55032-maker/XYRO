@@ -15,6 +15,18 @@ The app currently supports member sign-in, a rotating QR pass, membership
 status, workout and diet plans, attendance, progress history, payments, and
 profile/logout.
 
+## Downloadable Android test APK
+
+The repository includes an EAS `preview` profile that creates a directly
+installable APK and points it at the deployed XYRO API:
+
+```powershell
+npx eas-cli@latest build --platform android --profile preview
+```
+
+EAS will provide an install/download URL after the build completes. The first
+build requires an Expo account login and Android signing credential setup.
+
 ## Android release
 
 Use an EAS Android build after setting a production `EXPO_PUBLIC_API_URL` and
