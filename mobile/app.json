@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "XYRO Member",
+    "slug": "xyro-member",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "scheme": "xyro-member",
+    "extra": {
+      "apiUrl": "https://your-xyro-domain.example.com"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "platforms": ["android"],
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ]
+  }
+}
