@@ -35,7 +35,10 @@ async function request(path: string, token: string, options?: RequestInit) {
     ...options,
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...(options?.headers ?? {}) },
   });
-  const body = await response.json();
+  const contentType = response.headers.get("content-type") ?? "";
+  const body = contentType.includes("application/json")
+    ? await response.json()
+    : { error: `The server returned HTTP ${response.status}. Please redeploy the XYRO API.` };
   if (!response.ok) throw new Error(body.error ?? "Request failed.");
   return body;
 }
@@ -53,7 +56,10 @@ function Login({ onLogin }: { onLogin: (token: string) => void }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifier: identifier.trim(), password }),
       });
-      const body = await response.json();
+      const contentType = response.headers.get("content-type") ?? "";
+      const body = contentType.includes("application/json")
+        ? await response.json()
+        : { error: `The server returned HTTP ${response.status}. Please redeploy the XYRO API.` };
       if (!response.ok) throw new Error(body.error ?? "Unable to sign in.");
       await SecureStore.setItemAsync(TOKEN_KEY, body.accessToken);
       onLogin(body.accessToken);
