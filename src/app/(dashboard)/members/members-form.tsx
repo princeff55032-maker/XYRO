@@ -5,14 +5,10 @@ import { useRouter } from "next/navigation";
 import {
   Loader2,
   Plus,
-  UserPlus,
   UserCheck,
   Check,
   Copy,
-  KeyRound,
   Sparkles,
-  ExternalLink,
-  MessageCircle,
   MessageSquare,
 } from "lucide-react";
 import {
@@ -48,7 +44,6 @@ export function AddMemberDialog({
   const [createdCredentials, setCreatedCredentials] =
     useState<MemberCredentials | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const [copiedAll, setCopiedAll] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -119,24 +114,6 @@ export function AddMemberDialog({
     navigator.clipboard.writeText(text);
     setCopiedField(fieldName);
     setTimeout(() => setCopiedField(null), 2000);
-  };
-
-  const copyAllCredentials = () => {
-    if (!createdCredentials) return;
-    const text = `🏋️ Welcome to ${createdCredentials.gymName}!
-Your Member Portal Login Details:
-━━━━━━━━━━━━━━━━━━━━━━
-👤 Member Name: ${createdCredentials.name}
-🆔 Member ID: ${createdCredentials.memberId}
-📧 Email: ${createdCredentials.email}
-🔑 Password: ${createdCredentials.password}
-🌐 Login URL: ${window.location.origin}/login
-━━━━━━━━━━━━━━━━━━━━━━
-Select "Login as Gym Member" to access your Digital QR Pass, workout routines, and diet plans!`;
-
-    navigator.clipboard.writeText(text);
-    setCopiedAll(true);
-    setTimeout(() => setCopiedAll(false), 2000);
   };
 
   const getWhatsAppShareUrl = () => {

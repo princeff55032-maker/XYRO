@@ -8,7 +8,6 @@ import {
   Loader2,
   Check,
   X,
-  ShieldCheck,
   ShieldAlert,
   Building2,
   User,

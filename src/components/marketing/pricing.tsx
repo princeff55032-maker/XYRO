@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Check, Sparkles, ArrowRight } from "lucide-react";
+import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const plans = [

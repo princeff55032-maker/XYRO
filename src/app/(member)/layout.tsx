@@ -3,9 +3,17 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/db";
 import { Logo } from "@/components/marketing/logo";
-import { getInitials } from "@/lib/utils";
+import "@/lib/utils";
 import { MemberNav } from "./member-nav";
 import { LiveRefresh } from "@/components/live-refresh";
+import type { Prisma } from "@prisma/client";
+
+type MemberLayoutRow = Prisma.MemberGetPayload<{
+  include: {
+    gym: { select: { name: true; gymCode: true } };
+    user: { select: { name: true; email: true } };
+  };
+}>;
 
 export default async function MemberPortalLayout({
   children,
@@ -17,7 +25,7 @@ export default async function MemberPortalLayout({
     redirect("/login?callbackUrl=/member");
   }
 
-  let member: any = null;
+  let member: MemberLayoutRow | null = null;
   try {
     member = await prisma.member.findUnique({
       where: { userId: session.user.id },
@@ -52,7 +60,6 @@ export default async function MemberPortalLayout({
 
           <MemberNav
             userName={session.user.name || member?.user?.name || "Member"}
-            userEmail={session.user.email}
             gymName={member?.gym?.name || "XYRO Gym"}
           />
         </div>
@@ -68,4 +75,3 @@ export default async function MemberPortalLayout({
     </div>
   );
 }
-

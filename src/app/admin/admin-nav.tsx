@@ -1,15 +1,13 @@
 "use client";
 
 import { signOut } from "next-auth/react";
-import { LogOut, Crown } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { getInitials } from "@/lib/utils";
 
 export function AdminNav({
   userName,
-  userEmail,
 }: {
   userName: string;
-  userEmail?: string;
 }) {
   return (
     <div className="flex items-center gap-3">

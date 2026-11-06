@@ -12,27 +12,18 @@ import {
   Copy,
   Save,
   ShieldCheck,
-  Calendar,
-  DollarSign,
   MapPin,
   Mail,
   Phone,
-  Info,
-  Globe,
-  FileText,
   Smartphone,
   MessageSquare,
   QrCode,
   AlertCircle,
   CheckCircle2,
-  Lock,
-  Layers,
   Crown,
-  ChevronRight,
   X,
   Loader2,
-  ExternalLink,
-} from "lucide-react";
+  } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

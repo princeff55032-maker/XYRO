@@ -8,10 +8,8 @@ import {
   Search,
   CheckCircle2,
   Loader2,
-  ExternalLink,
   Plus,
-  TrendingUp,
-} from "lucide-react";
+  } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
@@ -43,11 +41,9 @@ const STATUSES = ["ALL", "NEW", "CONTACTED", "TRIAL_BOOKED", "CONVERTED", "LOST"
 export function LeadsClient({
   leads,
   plans,
-  gymCode,
 }: {
   leads: LeadItem[];
   plans: PlanOption[];
-  gymCode: string;
 }) {
   const router = useRouter();
   const [filterStatus, setFilterStatus] = useState<string>("ALL");

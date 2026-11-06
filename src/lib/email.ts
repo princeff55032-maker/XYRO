@@ -7,8 +7,6 @@ export interface SendEmailOptions {
   text?: string;
 }
 
-let transporter: nodemailer.Transporter | null = null;
-
 function getTransporter() {
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD;
@@ -77,9 +75,10 @@ export async function sendAppEmail(options: SendEmailOptions): Promise<{ ok: boo
       });
       console.log(`[Email Delivered via Gmail SMTP]: Message ID: ${info.messageId} to ${normalizedTo}`);
       return { ok: true };
-    } catch (err: any) {
-      lastError = `Gmail SMTP Error: ${err?.message || err}`;
-      console.error("[Gmail SMTP Error]:", err?.message || err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      lastError = `Gmail SMTP Error: ${message}`;
+      console.error("[Gmail SMTP Error]:", message);
     }
   } else {
     lastError = "SMTP credentials (SMTP_USER / SMTP_PASS) not configured in environment";
@@ -110,8 +109,9 @@ export async function sendAppEmail(options: SendEmailOptions): Promise<{ ok: boo
         const errorText = await res.text();
         lastError = `Resend Error: ${errorText}`;
       }
-    } catch (sendErr: any) {
-      lastError = `Resend Fetch Error: ${sendErr?.message || sendErr}`;
+    } catch (sendErr: unknown) {
+      const message = sendErr instanceof Error ? sendErr.message : String(sendErr);
+      lastError = `Resend Fetch Error: ${message}`;
       console.error("[Resend API Error]:", sendErr);
     }
   }

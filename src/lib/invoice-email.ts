@@ -416,7 +416,7 @@ export async function sendMemberInvoiceEmail(
   params: SendInvoiceEmailParams
 ): Promise<InvoiceEmailResult> {
   try {
-    const { gymId, memberId, paymentId } = params;
+    const { gymId, paymentId } = params;
 
     // 1. Fetch Gym & Settings
     const gym = await prisma.gym.findUnique({
@@ -584,8 +584,9 @@ Thank you for training with ${gym.name}!`;
       console.error(`[Invoice Email Dispatch Failed]: ${result.error}`);
       return { sent: false, recipientEmail, invoiceNumber, error: result.error };
     }
-  } catch (err: any) {
-    console.error("[sendMemberInvoiceEmail Critical Error]:", err?.message || err);
-    return { sent: false, error: err?.message || String(err) };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[sendMemberInvoiceEmail Critical Error]:", message);
+    return { sent: false, error: message };
   }
 }

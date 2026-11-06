@@ -1,6 +1,25 @@
 import { requireTenant } from "@/lib/tenant";
 import prisma from "@/lib/db";
 import { SettingsClient } from "./settings-client";
+import type { Prisma } from "@prisma/client";
+
+type GymRow = Prisma.GymGetPayload<{
+  include: {
+    settings: true;
+    subscription: true;
+    owner: { select: { id: true; name: true; email: true; phone: true } };
+  };
+}>;
+type StaffRow = Prisma.GymStaffGetPayload<{
+  include: {
+    user: {
+      select: { id: true; name: true; email: true; phone: true; role: true };
+    };
+  };
+}>;
+type AuditLogRow = Prisma.AuditLogGetPayload<{
+  include: { user: { select: { name: true; email: true; role: true } } };
+}>;
 
 export const metadata = {
   title: "Settings",
@@ -10,12 +29,12 @@ export default async function SettingsPage() {
   const session = await requireTenant();
   const gymId = session.user.gymId!;
 
-  let gym: any = null;
-  let staff: any[] = [];
+  let gym: GymRow | null = null;
+  let staff: StaffRow[] = [];
   let totalMembers = 0;
   let totalTrainers = 0;
   let totalPlans = 0;
-  let auditLogs: any[] = [];
+  let auditLogs: AuditLogRow[] = [];
 
   try {
     const results = await Promise.all([

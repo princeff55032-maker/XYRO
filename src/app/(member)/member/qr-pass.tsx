@@ -62,7 +62,9 @@ export function MemberQrPass({
   }, []);
 
   useEffect(() => {
-    fetchSignedPass();
+    const initialFetch = window.setTimeout(() => {
+      void fetchSignedPass();
+    }, 0);
     const refreshTimer = setInterval(() => {
       fetchSignedPass();
     }, 30000);
@@ -72,6 +74,7 @@ export function MemberQrPass({
     }, 1000);
 
     return () => {
+      window.clearTimeout(initialFetch);
       clearInterval(refreshTimer);
       clearInterval(countdownTimer);
     };

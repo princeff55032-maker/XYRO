@@ -18,8 +18,7 @@ import {
   Salad,
   Settings,
   LogOut,
-  ChevronRight,
-} from "lucide-react";
+  } from "lucide-react";
 
 export function MobileBottomNav() {
   const pathname = usePathname();

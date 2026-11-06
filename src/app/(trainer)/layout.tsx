@@ -5,6 +5,11 @@ import prisma from "@/lib/db";
 import { Logo } from "@/components/marketing/logo";
 import { MemberNav } from "../(member)/member-nav";
 import { LiveRefresh } from "@/components/live-refresh";
+import type { Prisma } from "@prisma/client";
+
+type TrainerLayoutRow = Prisma.TrainerGetPayload<{
+  include: { gym: { select: { name: true; gymCode: true } } };
+}>;
 
 export default async function TrainerPortalLayout({
   children,
@@ -16,7 +21,7 @@ export default async function TrainerPortalLayout({
     redirect("/login?callbackUrl=/trainer");
   }
 
-  let trainer: any = null;
+  let trainer: TrainerLayoutRow | null = null;
   try {
     trainer = await prisma.trainer.findUnique({
       where: { userId: session.user.id },
@@ -50,7 +55,6 @@ export default async function TrainerPortalLayout({
 
           <MemberNav
             userName={session.user.name ?? "Coach"}
-            userEmail={session.user.email}
             gymName={`${trainer?.gym?.name || "Gym"} · Trainer`}
           />
         </div>
@@ -66,4 +70,3 @@ export default async function TrainerPortalLayout({
     </div>
   );
 }
-

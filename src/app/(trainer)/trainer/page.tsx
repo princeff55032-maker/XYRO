@@ -9,6 +9,22 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { getInitials } from "@/lib/utils";
 import { TrainerPlansClient } from "./trainer-plans-client";
+import type { Prisma } from "@prisma/client";
+
+type TrainerPortalRow = Prisma.TrainerGetPayload<{
+  include: {
+    gym: true;
+    user: true;
+    members: {
+      include: {
+        user: { select: { name: true; email: true; phone: true } };
+        memberships: { include: { plan: { select: { name: true } } } };
+        workoutPlans: { include: { exercises: true } };
+        dietPlans: { include: { meals: true } };
+      };
+    };
+  };
+}>;
 
 export const metadata = {
   title: "Trainer Portal",
@@ -20,7 +36,7 @@ export default async function TrainerPortalPage() {
     redirect("/login?callbackUrl=/trainer");
   }
 
-  let trainer: any = null;
+  let trainer: TrainerPortalRow | null = null;
   try {
     trainer = await prisma.trainer.findUnique({
       where: { userId: session.user.id },
@@ -84,7 +100,7 @@ export default async function TrainerPortalPage() {
     );
   }
 
-  const formattedAssignedMembers = (trainer.members || []).map((m: any) => ({
+  const formattedAssignedMembers = (trainer.members || []).map((m) => ({
     id: m.id,
     memberId: m.memberId,
     user: {
@@ -100,7 +116,7 @@ export default async function TrainerPortalPage() {
       ? {
           id: m.workoutPlans[0].id,
           name: m.workoutPlans[0].name,
-          exercises: (m.workoutPlans[0].exercises || []).map((e: any) => ({
+          exercises: (m.workoutPlans[0].exercises || []).map((e) => ({
             id: e.id,
             dayOfWeek: e.dayOfWeek,
             exerciseName: e.exerciseName,
@@ -116,7 +132,7 @@ export default async function TrainerPortalPage() {
           id: m.dietPlans[0].id,
           name: m.dietPlans[0].name,
           totalCalories: m.dietPlans[0].totalCalories,
-          meals: (m.dietPlans[0].meals || []).map((meal: any) => ({
+          meals: (m.dietPlans[0].meals || []).map((meal) => ({
             id: meal.id,
             mealType: meal.mealType,
             time: meal.time,
@@ -128,11 +144,11 @@ export default async function TrainerPortalPage() {
   }));
 
   const activeWorkoutsCount = formattedAssignedMembers.filter(
-    (m: any) => !!m.activeWorkoutPlan
+    (m) => !!m.activeWorkoutPlan
   ).length;
 
   const activeDietsCount = formattedAssignedMembers.filter(
-    (m: any) => !!m.activeDietPlan
+    (m) => !!m.activeDietPlan
   ).length;
 
   return (

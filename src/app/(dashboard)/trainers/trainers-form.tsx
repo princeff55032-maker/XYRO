@@ -9,8 +9,7 @@ import {
   Check,
   Copy,
   Sparkles,
-  MessageCircle,
-} from "lucide-react";
+  } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import "@/components/ui/badge";
 import { addTrainerAction, type TrainerCredentials } from "../actions";
 
 export function AddTrainerDialog() {
@@ -93,15 +92,6 @@ Select "Login as Trainer" to access your assigned members, workout programs, and
     navigator.clipboard.writeText(text);
     setCopiedAll(true);
     setTimeout(() => setCopiedAll(false), 2000);
-  };
-
-  const getWhatsAppShareUrl = () => {
-    if (!createdCredentials) return "#";
-    const cleanPhone = createdCredentials.phone.replace(/[^0-9]/g, "");
-    const msg = encodeURIComponent(
-      `🏋️‍♂️ Hi ${createdCredentials.name}, welcome to the training team at ${createdCredentials.gymName}!\n\nHere are your XYRO Trainer Portal credentials:\n• Email: ${createdCredentials.email}\n• Password: ${createdCredentials.password}\n• Login Portal: ${typeof window !== "undefined" ? window.location.origin : ""}/login\n\nLogin to manage your assigned members and routines!`
-    );
-    return `https://wa.me/${cleanPhone}?text=${msg}`;
   };
 
   const handleClose = (newOpen: boolean) => {

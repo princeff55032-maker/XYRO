@@ -2,26 +2,34 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/db";
 import {
-  Calendar,
   Clock,
   Dumbbell,
   Salad,
-  CreditCard,
   UserCheck,
   Flame,
   CheckCircle,
-  AlertTriangle,
   Receipt,
-  Phone,
-  Mail,
-  ChevronRight,
-  TrendingUp,
-} from "lucide-react";
+  } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { formatDate, formatCurrency, daysRemaining, getInitials } from "@/lib/utils";
+import { formatDate, formatCurrency, daysRemaining } from "@/lib/utils";
 import { MemberQrPass } from "./qr-pass";
 import { MemberPaymentCheckout } from "./member-payment-checkout";
 import { DailyProgressTracker } from "./daily-progress-tracker";
+import type { Prisma } from "@prisma/client";
+
+type MemberPortalRow = Prisma.MemberGetPayload<{
+  include: {
+    gym: true;
+    user: true;
+    assignedTrainer: { include: { user: { select: { name: true; email: true; phone: true } } } };
+    memberships: { include: { plan: true } };
+    attendance: true;
+    progressRecords: true;
+    workoutPlans: { include: { exercises: true } };
+    dietPlans: { include: { meals: true } };
+    payments: { include: { invoice: true } };
+  };
+}>;
 
 export const metadata = {
   title: "Member Portal",
@@ -34,7 +42,7 @@ export default async function MemberPortalPage() {
   }
 
   // Fetch complete member profile and records
-  let member: any = null;
+  let member: MemberPortalRow | null = null;
   try {
     member = await prisma.member.findUnique({
       where: { userId: session.user.id },
@@ -95,7 +103,7 @@ export default async function MemberPortalPage() {
     );
   }
 
-  const activeMembership = member.memberships?.find((m: any) => m.status === "ACTIVE");
+  const activeMembership = member.memberships?.find((m) => m.status === "ACTIVE");
   const daysLeft = activeMembership ? daysRemaining(activeMembership.endDate) : 0;
   const isPassValid = Boolean(member.isActive && activeMembership && daysLeft > 0);
 
@@ -226,7 +234,7 @@ export default async function MemberPortalPage() {
 
           <div className="mt-6 flex-1 space-y-3">
             {currentWorkout?.exercises && currentWorkout.exercises.length > 0 ? (
-              currentWorkout.exercises.map((ex: any) => (
+              currentWorkout.exercises.map((ex) => (
                 <div
                   key={ex.id}
                   className="flex items-center justify-between rounded-2xl border border-[#E5D9C5] bg-[#F9F8F6] p-3.5 transition hover:bg-[#F3EFEA]"
@@ -287,7 +295,7 @@ export default async function MemberPortalPage() {
 
           <div className="mt-6 flex-1 space-y-3">
             {currentDiet?.meals && currentDiet.meals.length > 0 ? (
-              currentDiet.meals.map((meal: any) => (
+              currentDiet.meals.map((meal) => (
                 <div
                   key={meal.id}
                   className="rounded-2xl border border-[#E5D9C5] bg-[#F9F8F6] p-3.5 space-y-1.5 transition hover:bg-[#F3EFEA]"
@@ -333,7 +341,7 @@ export default async function MemberPortalPage() {
 
           <div className="mt-4 space-y-2.5">
             {attendanceList.length > 0 ? (
-              attendanceList.map((att: any) => (
+              attendanceList.map((att) => (
                 <div
                   key={att.id}
                   className="flex items-center justify-between rounded-2xl border border-[#E5D9C5] bg-[#F9F8F6] px-4 py-3 text-xs"
@@ -370,7 +378,7 @@ export default async function MemberPortalPage() {
 
           <div className="mt-4 space-y-2.5">
             {paymentsList.length > 0 ? (
-              paymentsList.map((p: any) => (
+              paymentsList.map((p) => (
                 <div
                   key={p.id}
                   className="flex items-center justify-between rounded-2xl border border-[#E5D9C5] bg-[#F9F8F6] px-4 py-3 text-xs"

@@ -4,6 +4,18 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { RecordPaymentDialog, ModifyPaymentDialog, EmailInvoiceButton } from "./payments-form";
 import { ExportPaymentsButton } from "./export-payments-button";
+import type { Prisma } from "@prisma/client";
+
+type PaymentRow = Prisma.PaymentGetPayload<{
+  include: { member: { include: { user: { select: { name: true } } } } };
+}>;
+type MemberRow = Prisma.MemberGetPayload<{
+  include: { user: { select: { name: true } } };
+}>;
+type PlanRow = Prisma.MembershipPlanGetPayload<{
+  select: { id: true; name: true };
+}>;
+type PaymentTotals = { _sum: { totalAmount: number | null }; _count: number };
 
 export const metadata = { title: "Payments" };
 
@@ -11,10 +23,10 @@ export default async function PaymentsPage() {
   const session = await requireTenant();
   const gymId = session.user.gymId!;
 
-  let payments: any[] = [];
-  let members: any[] = [];
-  let plans: any[] = [];
-  let totals: any = null;
+  let payments: PaymentRow[] = [];
+  let members: MemberRow[] = [];
+  let plans: PlanRow[] = [];
+  let totals: PaymentTotals | null = null;
 
   try {
     const results = await Promise.all([
@@ -157,10 +169,7 @@ export default async function PaymentsPage() {
                     </td>
                     <td className="px-4 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        <EmailInvoiceButton
-                          paymentId={p.id}
-                          memberName={p.member?.user?.name}
-                        />
+                        <EmailInvoiceButton paymentId={p.id} />
                         <ModifyPaymentDialog
                           payment={{
                             id: p.id,

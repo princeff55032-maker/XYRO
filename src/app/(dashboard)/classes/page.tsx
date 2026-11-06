@@ -3,6 +3,17 @@ import prisma from "@/lib/db";
 import { getGymSubscription } from "@/lib/subscriptions";
 import { PlanUpgradeGate } from "@/components/dashboard/plan-upgrade-gate";
 import { ClassesClient } from "./classes-client";
+import type { Prisma } from "@prisma/client";
+
+type ClassRow = Prisma.GymClassGetPayload<{
+  include: {
+    trainer: { select: { user: { select: { name: true } } } };
+    _count: { select: { bookings: true } };
+  };
+}>;
+type TrainerRow = Prisma.TrainerGetPayload<{
+  include: { user: { select: { name: true } } };
+}>;
 
 export const metadata = { title: "Classes & Schedule" };
 
@@ -39,8 +50,8 @@ export default async function ClassesPage() {
     );
   }
 
-  let classes: any[] = [];
-  let trainers: any[] = [];
+  let classes: ClassRow[] = [];
+  let trainers: TrainerRow[] = [];
 
   try {
     const results = await Promise.all([

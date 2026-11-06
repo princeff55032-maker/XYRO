@@ -1,6 +1,6 @@
 "use server";
 
-import bcrypt from "bcryptjs";
+
 import prisma from "@/lib/db";
 import { getClientIp, checkRateLimit } from "@/lib/ratelimit";
 import {

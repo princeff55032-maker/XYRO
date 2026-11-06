@@ -6,13 +6,10 @@ import {
   Upload,
   FileSpreadsheet,
   CheckCircle2,
-  AlertTriangle,
   Download,
   Loader2,
   ArrowRight,
-  RefreshCw,
-  X,
-} from "lucide-react";
+  } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -94,7 +91,7 @@ export function ImportMembersDialog() {
 
         setMappings(initialMap);
         setStep("mapping");
-      } catch (err) {
+      } catch {
         setError("Failed to parse CSV file. Please ensure it is a valid comma-separated text file.");
       }
     };
@@ -249,7 +246,7 @@ export function ImportMembersDialog() {
                 { field: "paymentStatus", label: "Payment Status (PAID/PENDING)", required: false },
                 { field: "gender", label: "Gender", required: false },
                 { field: "address", label: "City / Address", required: false },
-              ].map(({ field, label, required }) => (
+              ].map(({ field, label }) => (
                 <div key={field} className="rounded-xl border border-[#E5D9C5] bg-[#F9F8F6] p-3">
                   <label className="block text-[11px] font-mono font-bold text-[#33281E] mb-1">
                     {label}

@@ -8,12 +8,8 @@ import {
   Activity,
   Plus,
   Trash2,
-  Calendar,
   Droplets,
-  Flame,
-  CheckCircle2,
   Loader2,
-  X,
   Sparkles,
   HeartPulse,
 } from "lucide-react";
@@ -25,7 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import "@/components/ui/badge";
 import { logMemberDailyProgressAction, deleteMemberProgressRecordAction } from "./actions";
 
 export interface ProgressRecordItem {

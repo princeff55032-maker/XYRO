@@ -5,17 +5,10 @@ import { auth } from "@/lib/auth";
 import { Logo } from "@/components/marketing/logo";
 import {
   Crown,
-  LayoutDashboard,
-  Building2,
-  Users,
-  CreditCard,
-  ShieldAlert,
   ArrowRightLeft,
-  LogOut,
-  Sparkles,
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { getInitials } from "@/lib/utils";
+  } from "lucide-react";
+import "@/components/ui/badge";
+import "@/lib/utils";
 import { AdminNav } from "./admin-nav";
 
 export default async function SuperAdminLayout({
@@ -64,7 +57,6 @@ export default async function SuperAdminLayout({
 
             <AdminNav
               userName={session.user.name ?? "Super Admin"}
-              userEmail={session.user.email}
             />
           </div>
         </div>

@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   Loader2,
   Sparkles,
-  ArrowRight,
   ShieldCheck,
   Smartphone,
   Copy,

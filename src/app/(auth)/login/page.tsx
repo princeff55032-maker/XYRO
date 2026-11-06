@@ -12,7 +12,6 @@ import {
   Dumbbell,
   User,
   QrCode,
-  ShieldCheck,
   IdCard,
   ArrowLeft,
   RefreshCw,
@@ -265,7 +264,7 @@ function LoginForm() {
       }
     }
 
-    window.location.href = targetUrl;
+    router.push(targetUrl);
   }
 
   return (

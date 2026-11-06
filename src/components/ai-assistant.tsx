@@ -4,22 +4,13 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Bot,
-  Sparkles,
   X,
   Send,
   Loader2,
-  ChevronDown,
   RotateCcw,
   ExternalLink,
-  MessageSquare,
   HelpCircle,
-  ShieldCheck,
-  Building2,
-  Users,
-  CreditCard,
-  ScanLine,
-} from "lucide-react";
+  } from "lucide-react";
 
 interface Message {
   id: string;
@@ -87,9 +78,7 @@ function formatMarkdown(text: string) {
 
 function renderInlineFormatting(str: string) {
   // Replace bold **text** and links [text](url)
-  const parts: React.ReactNode[] = [];
-  let current = str;
-  let keyIdx = 0;
+  const current = str;
 
   // Regex for markdown links [label](url) and bold **text** and code `code`
   const regex = /(\*\*.*?\*\*|\[.*?\]\(.*?\)|\`.*?\`)/g;
@@ -171,7 +160,7 @@ Feel free to choose a quick topic or type your question below.`,
     const query = customQuery || input.trim();
     if (!query || loading) return;
 
-    const userMessageId = `user-${Date.now()}`;
+    const userMessageId = `user-${crypto.randomUUID()}`;
     const newMessages: Message[] = [
       ...messages,
       { id: userMessageId, sender: "user", text: query, timestamp: new Date() },

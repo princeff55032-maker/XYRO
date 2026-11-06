@@ -70,7 +70,7 @@ export async function POST(req: Request) {
       }
     }
 
-    let payload: any;
+    let payload: Record<string, unknown>;
     try {
       payload = JSON.parse(rawBody);
     } catch {
@@ -78,14 +78,22 @@ export async function POST(req: Request) {
     }
 
     // Support Cashfree & Generic Payload formats
-    const eventType = payload.type || payload.event || "PAYMENT_SUCCESS";
-    const data = payload.data || payload;
+    const eventType =
+      typeof payload.type === "string"
+        ? payload.type
+        : typeof payload.event === "string"
+          ? payload.event
+          : "PAYMENT_SUCCESS";
+    const data =
+      payload.data && typeof payload.data === "object"
+        ? (payload.data as Record<string, unknown>)
+        : payload;
 
-    const orderId = data.order_id || data.orderId || data.paymentId;
-    const transactionId = data.payment_id || data.transactionId || data.referenceId || orderId;
+    const orderId = String(data.order_id || data.orderId || data.paymentId || "");
+    const transactionId = String(data.payment_id || data.transactionId || data.referenceId || orderId);
     const amount = Number(data.order_amount || data.amount || 0);
-    const currency = (data.order_currency || data.currency || "INR").toUpperCase();
-    const paymentStatus = (data.payment_status || data.status || "").toUpperCase();
+    const currency = String(data.order_currency || data.currency || "INR").toUpperCase();
+    const paymentStatus = String(data.payment_status || data.status || "").toUpperCase();
 
     if (!orderId || !transactionId) {
       return NextResponse.json({ error: "Missing order or transaction ID" }, { status: 400 });
@@ -108,7 +116,6 @@ export async function POST(req: Request) {
       include: {
         gym: true,
         member: { include: { user: true } },
-        membership: { include: { plan: true } },
       },
     });
 
@@ -143,7 +150,10 @@ export async function POST(req: Request) {
 
       // Activate or Extend Membership
       if (existingPayment.membershipId) {
-        const membership = existingPayment.membership;
+        const membership = await tx.membership.findUnique({
+          where: { id: existingPayment.membershipId },
+          include: { plan: true },
+        });
         if (membership) {
           const planDays = membership.plan?.durationDays || 30;
           const currentEnd = membership.endDate > new Date() ? membership.endDate : new Date();

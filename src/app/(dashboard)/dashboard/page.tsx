@@ -60,7 +60,7 @@ export default async function DashboardPage() {
     totalAmount: number;
     member: { user: { name: string } | null } | null;
   }> = [];
-  let days: { day: string; revenue: number }[] = [];
+  const days: { day: string; revenue: number }[] = [];
 
   try {
     const [
@@ -166,10 +166,10 @@ export default async function DashboardPage() {
     todayInflow = todayRevenueRes?._sum?.totalAmount ?? 0;
     todayCheckins = todayCheckinsRes;
     currentlyInside = currentlyInsideRes;
-    expiringSoon = (expiringSoonRes as any) || [];
+    expiringSoon = expiringSoonRes || [];
     overdueMembers = overdueMembersRes;
-    recentMembers = (recentMembersRes as any) || [];
-    recentPayments = (recentPaymentsRes as any) || [];
+    recentMembers = recentMembersRes || [];
+    recentPayments = recentPaymentsRes || [];
 
     // 14-Day revenue series
     for (let i = 13; i >= 0; i--) {

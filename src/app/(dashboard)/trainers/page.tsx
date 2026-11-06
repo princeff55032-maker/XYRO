@@ -5,6 +5,22 @@ import { getInitials } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { AddTrainerDialog } from "./trainers-form";
 import { TrainerActions, GymMemberSummary } from "./trainer-actions";
+import type { Prisma } from "@prisma/client";
+
+type TrainerRow = Prisma.TrainerGetPayload<{
+  include: {
+    user: { select: { name: true; email: true; phone: true } };
+    _count: { select: { members: true } };
+  };
+}>;
+type MemberRow = Prisma.MemberGetPayload<{
+  include: {
+    user: { select: { name: true; email: true; phone: true } };
+    assignedTrainer: { include: { user: { select: { name: true } } } };
+    memberships: { include: { plan: { select: { name: true } } } };
+  };
+}>;
+type TrainerConfig = { maxTrainers: number; badge: string };
 
 export const metadata = { title: "Trainers" };
 
@@ -12,9 +28,9 @@ export default async function TrainersPage() {
   const session = await requireTenant();
   const gymId = session.user.gymId!;
 
-  let config: any = { maxTrainers: 10, badge: "PRO" };
-  let trainers: any[] = [];
-  let rawMembers: any[] = [];
+  let config: TrainerConfig = { maxTrainers: 10, badge: "PRO" };
+  let trainers: TrainerRow[] = [];
+  let rawMembers: MemberRow[] = [];
 
   try {
     const subRes = await getGymSubscription(gymId);

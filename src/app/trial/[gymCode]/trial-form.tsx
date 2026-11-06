@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, CheckCircle2, Loader2, ArrowRight, ShieldCheck, MapPin, Dumbbell } from "lucide-react";
+import { Sparkles, CheckCircle2, Loader2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createLeadAction } from "@/app/(dashboard)/actions";
 

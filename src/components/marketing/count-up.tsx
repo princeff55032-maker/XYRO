@@ -10,7 +10,7 @@ function useInView<T extends HTMLElement>(threshold = 0.3) {
     const el = ref.current;
     if (!el) return;
     if (typeof IntersectionObserver === "undefined") {
-      setInView(true);
+      window.setTimeout(() => setInView(true), 0);
       return;
     }
     const obs = new IntersectionObserver(

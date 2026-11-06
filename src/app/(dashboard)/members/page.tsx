@@ -8,6 +8,21 @@ import { AddMemberDialog } from "./members-form";
 import { MemberActions } from "./member-actions";
 import { ExportMembersButton } from "./export-members-button";
 import { ImportMembersDialog } from "./import-members-dialog";
+import type { Prisma } from "@prisma/client";
+
+type MemberRow = Prisma.MemberGetPayload<{
+  include: {
+    user: { select: { name: true; email: true; phone: true } };
+    assignedTrainer: { include: { user: { select: { name: true } } } };
+    memberships: {
+      include: { plan: { select: { id: true; name: true; price: true; durationDays: true } } };
+    };
+  };
+}>;
+type PlanRow = Prisma.MembershipPlanGetPayload<{
+  select: { id: true; name: true; price: true; durationDays: true };
+}>;
+type MemberConfig = { maxMembers: number; badge: string };
 
 export const metadata = { title: "Members" };
 
@@ -15,9 +30,9 @@ export default async function MembersPage() {
   const session = await requireTenant();
   const gymId = session.user.gymId!;
 
-  let config: any = { maxMembers: 50, badge: "FREE" };
-  let members: any[] = [];
-  let plans: any[] = [];
+  let config: MemberConfig = { maxMembers: 50, badge: "FREE" };
+  let members: MemberRow[] = [];
+  let plans: PlanRow[] = [];
 
   try {
     const subRes = await getGymSubscription(gymId);

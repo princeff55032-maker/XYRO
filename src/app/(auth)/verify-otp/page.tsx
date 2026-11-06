@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Mail, ArrowLeft, Loader2, CheckCircle2, ShieldCheck, RefreshCw } from "lucide-react";
+import { ArrowLeft, Loader2, CheckCircle2, ShieldCheck, RefreshCw } from "lucide-react";
 import { verifySignupOtpAction, resendSignupOtpAction } from "@/app/(auth)/register/actions";
 
 function VerifyOtpContent() {
@@ -11,7 +11,7 @@ function VerifyOtpContent() {
   const searchParams = useSearchParams();
   const emailParam = searchParams.get("email") || "";
 
-  const [email, setEmail] = useState(emailParam);
+  const [email] = useState(emailParam);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
@@ -20,12 +20,6 @@ function VerifyOtpContent() {
   const [countdown, setCountdown] = useState(60);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-
-  useEffect(() => {
-    if (emailParam) {
-      setEmail(emailParam);
-    }
-  }, [emailParam]);
 
   useEffect(() => {
     // Focus first input on mount

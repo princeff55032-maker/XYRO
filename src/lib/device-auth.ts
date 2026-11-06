@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import prisma from "@/lib/db";
 import { auth } from "@/lib/auth";
-import type { AccessDevice, Gym } from "@prisma/client";
+import type { AccessDevice } from "@prisma/client";
 
 export function hashDeviceApiKey(apiKey: string): string {
   return crypto.createHash("sha256").update(apiKey).digest("hex");

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Sparkles, Lock, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import "@/components/ui/badge";
 
 interface PlanUpgradeGateProps {
   featureName: string;

@@ -1,6 +1,10 @@
 import { requireTenant } from "@/lib/tenant";
 import prisma from "@/lib/db";
 import { LeadsClient } from "./leads-client";
+import type { Prisma } from "@prisma/client";
+
+type LeadRow = Prisma.LeadGetPayload<Prisma.LeadDefaultArgs>;
+type PlanRow = Prisma.MembershipPlanGetPayload<{ select: { id: true; name: true } }>;
 
 export const metadata = { title: "Leads" };
 
@@ -8,16 +12,11 @@ export default async function LeadsPage() {
   const session = await requireTenant();
   const gymId = session.user.gymId!;
 
-  let gym: any = null;
-  let leads: any[] = [];
-  let plans: any[] = [];
+  let leads: LeadRow[] = [];
+  let plans: PlanRow[] = [];
 
   try {
     const results = await Promise.all([
-      prisma.gym.findUnique({
-        where: { id: gymId },
-        select: { gymCode: true, name: true },
-      }),
       prisma.lead.findMany({
         where: { gymId },
         orderBy: { createdAt: "desc" },
@@ -27,14 +26,11 @@ export default async function LeadsPage() {
         select: { id: true, name: true },
       }),
     ]);
-    gym = results[0];
-    leads = results[1];
-    plans = results[2];
+    leads = results[0];
+    plans = results[1];
   } catch (err) {
     console.error("[LeadsPage Fetch Error]:", err);
   }
-
-  const gymCode = gym?.gymCode || session.user.gymCode || "XYRO-001";
 
   return (
     <div className="space-y-6">
@@ -45,7 +41,7 @@ export default async function LeadsPage() {
         </p>
       </div>
 
-      <LeadsClient leads={leads} plans={plans} gymCode={gymCode} />
+      <LeadsClient leads={leads} plans={plans} />
     </div>
   );
 }

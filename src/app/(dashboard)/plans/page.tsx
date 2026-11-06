@@ -4,6 +4,11 @@ import { formatCurrency } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { AddPlanDialog } from "./plans-form";
 import { DeactivatePlanButton } from "./deactivate-plan";
+import type { Prisma } from "@prisma/client";
+
+type PlanRow = Prisma.MembershipPlanGetPayload<{
+  include: { _count: { select: { memberships: true } } };
+}>;
 
 export const metadata = { title: "Membership Plans" };
 
@@ -11,7 +16,7 @@ export default async function PlansPage() {
   const session = await requireTenant();
   const gymId = session.user.gymId!;
 
-  let plans: any[] = [];
+  let plans: PlanRow[] = [];
   try {
     plans = await prisma.membershipPlan.findMany({
       where: { gymId, deletedAt: null },

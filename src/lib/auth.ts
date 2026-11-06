@@ -298,7 +298,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!user.email) return false;
 
         // Ensure email is verified by Google
-        if (profile && (profile as any).email_verified === false) {
+        if (
+          profile &&
+          typeof profile === "object" &&
+          "email_verified" in profile &&
+          profile.email_verified === false
+        ) {
           console.warn("[OAuth Security]: Blocked login with unverified Google email.");
           return false;
         }

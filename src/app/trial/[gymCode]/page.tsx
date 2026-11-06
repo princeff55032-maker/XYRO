@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import prisma from "@/lib/db";
 import { PublicTrialForm } from "./trial-form";
-import { Dumbbell, ShieldCheck, MapPin, Sparkles } from "lucide-react";
+import { ShieldCheck, MapPin, Sparkles } from "lucide-react";
 
 export async function generateMetadata({
   params,

@@ -8,7 +8,6 @@ import {
   CreditCard,
   Pencil,
   Trash2,
-  AlertTriangle,
   RotateCcw,
   ShieldAlert,
   Mail,
@@ -639,10 +638,8 @@ export function ModifyPaymentDialog({
 
 export function EmailInvoiceButton({
   paymentId,
-  memberName,
 }: {
   paymentId: string;
-  memberName?: string;
 }) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");

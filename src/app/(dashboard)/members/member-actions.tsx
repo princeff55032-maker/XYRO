@@ -10,14 +10,9 @@ import {
   AlertTriangle,
   X,
   CreditCard,
-  Plus,
   Pencil,
-  Clock,
   User,
   Calendar,
-  Shield,
-  Tag,
-  Percent,
   Mail,
 } from "lucide-react";
 import {
@@ -42,7 +37,7 @@ import {
   updateMemberDetailsAction,
   updateMembershipAction,
 } from "../actions";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import { CustomTimeSlotPicker } from "@/components/time-slot-picker";
 
 export interface ActiveMembershipInfo {
@@ -653,7 +648,7 @@ export function MemberActions({
 
             <div className="flex items-center gap-2 rounded-xl border border-sky-200/80 bg-sky-50/60 p-2.5 text-[11px] text-sky-950">
               <Mail className="h-4 w-4 text-sky-700 shrink-0" />
-              <span>An official branded payment receipt &amp; tax invoice will be delivered to the member's email upon confirmation.</span>
+              <span>An official branded payment receipt &amp; tax invoice will be delivered to the member&apos;s email upon confirmation.</span>
             </div>
 
             <div className="flex items-center justify-end gap-2 border-t border-[#E5D9C5] pt-4 mt-2">

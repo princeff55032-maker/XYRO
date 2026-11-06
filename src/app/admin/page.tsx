@@ -141,8 +141,17 @@ export default async function SuperAdminPage() {
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
 
   // ── SaaS subscription revenue ────────────────────────────────
-  let totalSaaSMonthlyRevenue = 0;
-  let paidSaaSGyms = 0;
+  const activeSubscriptionStats = gyms.reduce(
+    (stats, gym) => {
+      const plan = gym.subscription?.plan || "FREE";
+      const monthlyRate = gym.subscription?.price || planMonthlyPrice[plan] || 0;
+      if (gym.subscription?.status === "ACTIVE" && monthlyRate > 0) {
+        return { revenue: stats.revenue + monthlyRate, count: stats.count + 1 };
+      }
+      return stats;
+    },
+    { revenue: 0, count: 0 }
+  );
 
   const planMonthlyPrice: Record<string, number> = {
     FREE: 0,
@@ -162,14 +171,7 @@ export default async function SuperAdminPage() {
   const processedGyms = gyms.map((g) => {
     const totalRev = g.payments.reduce((acc, p) => acc + (p.totalAmount || 0), 0);
     const plan = g.subscription?.plan || "FREE";
-    const monthlyRate = g.subscription?.price || planMonthlyPrice[plan] || 0;
-
     planDistribution[plan] = (planDistribution[plan] || 0) + 1;
-
-    if (g.subscription?.status === "ACTIVE" && monthlyRate > 0) {
-      totalSaaSMonthlyRevenue += monthlyRate;
-      paidSaaSGyms += 1;
-    }
 
     // This month vs last month revenue for per-gym comparison
     const thisMonthRev = g.payments
@@ -401,9 +403,9 @@ export default async function SuperAdminPage() {
     activeGyms: activeGymsCount,
     totalPlatformMembers: membersCount,
     totalPlatformTrainers: trainersCount,
-    totalSaaSMonthlyRevenue,
+    totalSaaSMonthlyRevenue: activeSubscriptionStats.revenue,
     totalGymRevenueProcessed: paymentsAgg._sum.totalAmount || 0,
-    paidSaaSGyms,
+    paidSaaSGyms: activeSubscriptionStats.count,
     totalUsers: totalUsersCount,
 
     // Growth metrics

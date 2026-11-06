@@ -1,43 +1,30 @@
 "use client";
 
-import { useState, useTransition, useMemo, useEffect, Fragment } from "react";
+import { useState, useTransition, useMemo, Fragment } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+
 import {
   Building2,
   Users,
-  CreditCard,
   TrendingUp,
   TrendingDown,
-  ShieldCheck,
   Search,
   CheckCircle2,
   AlertTriangle,
-  ExternalLink,
   Crown,
-  Sparkles,
-  Layers,
-  ArrowUpRight,
-  ShieldAlert,
   Dumbbell,
-  Check,
-  X,
   Activity,
   BarChart3,
   PieChart,
   UserPlus,
-  Eye,
-  EyeOff,
   KeyRound,
   Megaphone,
-  Clock,
   Zap,
   CircleDollarSign,
   BadgeCheck,
   HeartPulse,
   ChevronDown,
   ChevronUp,
-  Calendar,
   IndianRupee,
   AlertCircle,
   Send,
@@ -58,15 +45,13 @@ import { formatDate, formatCurrency, getInitials } from "@/lib/utils";
 import {
   toggleGymStatusAction,
   updateGymSubscriptionAction,
-  deleteGymAction,
   deleteGymPermanentAction,
   deleteMemberPermanentAction,
   deleteUserPermanentAction,
   toggleUserStatusAction,
   forcePasswordResetAction,
   createAnnouncementAction,
-  deleteAnnouncementAction,
-} from "./actions";
+  } from "./actions";
 import type { GymStatus, SubscriptionPlan, AccountStatus } from "@prisma/client";
 
 // ─── Types ─────────────────────────────────────────────────────
@@ -334,16 +319,14 @@ function DonutChartSVG({ data, colors }: {
   const total = data.reduce((acc, d) => acc + d.value, 0) || 1;
   const radius = 50;
   const circumference = 2 * Math.PI * radius;
-  let accumulated = 0;
-
   return (
     <div className="flex items-center gap-6">
       <svg viewBox="0 0 140 140" className="h-32 w-32 shrink-0">
         {data.map((d, i) => {
           const pct = d.value / total;
           const dashArray = `${pct * circumference} ${circumference}`;
+          const accumulated = data.slice(0, i).reduce((sum, item) => sum + item.value, 0);
           const rotation = (accumulated / total) * 360 - 90;
-          accumulated += d.value;
           return (
             <circle
               key={i}
@@ -408,18 +391,6 @@ export function SuperAdminClient({
   const [memberList, setMemberList] = useState<MemberData[]>(members);
   const [userList, setUserList] = useState<UserData[]>(recentUsers);
   const [modalError, setModalError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setGymList(gyms);
-  }, [gyms]);
-
-  useEffect(() => {
-    setMemberList(members);
-  }, [members]);
-
-  useEffect(() => {
-    setUserList(recentUsers);
-  }, [recentUsers]);
 
   // Deletion modals state
   const [gymToDelete, setGymToDelete] = useState<GymData | null>(null);

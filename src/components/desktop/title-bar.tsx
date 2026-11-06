@@ -7,10 +7,19 @@ import {
   X,
   Search,
   Dumbbell,
-  ShieldCheck,
-  CheckCircle2,
-  RefreshCw,
-} from "lucide-react";
+  } from "lucide-react";
+
+type ElectronApi = {
+  minimize?: () => void;
+  maximize?: () => void;
+  close?: () => void;
+};
+
+declare global {
+  interface Window {
+    electronAPI?: ElectronApi;
+  }
+}
 
 export function DesktopTitleBar({
   gymName,
@@ -23,27 +32,27 @@ export function DesktopTitleBar({
   const [isMaximized, setIsMaximized] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && (window as any).electronAPI) {
-      setIsElectron(true);
+    if (typeof window !== "undefined" && window.electronAPI) {
+      window.setTimeout(() => setIsElectron(true), 0);
     }
   }, []);
 
   const handleMinimize = () => {
-    if (typeof window !== "undefined" && (window as any).electronAPI?.minimize) {
-      (window as any).electronAPI.minimize();
+    if (typeof window !== "undefined" && window.electronAPI?.minimize) {
+      window.electronAPI.minimize();
     }
   };
 
   const handleMaximize = () => {
-    if (typeof window !== "undefined" && (window as any).electronAPI?.maximize) {
-      (window as any).electronAPI.maximize();
+    if (typeof window !== "undefined" && window.electronAPI?.maximize) {
+      window.electronAPI.maximize();
       setIsMaximized(!isMaximized);
     }
   };
 
   const handleClose = () => {
-    if (typeof window !== "undefined" && (window as any).electronAPI?.close) {
-      (window as any).electronAPI.close();
+    if (typeof window !== "undefined" && window.electronAPI?.close) {
+      window.electronAPI.close();
     }
   };
 

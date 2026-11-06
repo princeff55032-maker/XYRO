@@ -3,7 +3,7 @@
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { exportToCsv, CsvColumn } from "@/lib/export-csv";
-import { formatDate } from "@/lib/utils";
+import "@/lib/utils";
 
 interface MemberExportData {
   id: string;

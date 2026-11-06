@@ -27,11 +27,11 @@ const SENSITIVE_KEYS = new Set([
   "clientsecret",
 ]);
 
-function sanitizeMetadata(obj: any): any {
+function sanitizeMetadata(obj: unknown): unknown {
   if (!obj || typeof obj !== "object") return obj;
   if (Array.isArray(obj)) return obj.map(sanitizeMetadata);
 
-  const clean: Record<string, any> = {};
+  const clean: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(obj)) {
     const lowerKey = k.toLowerCase().replace(/[^a-z0-9]/g, "");
     if (SENSITIVE_KEYS.has(lowerKey) || lowerKey.includes("password") || lowerKey.includes("secret")) {
@@ -84,7 +84,10 @@ export async function logAuditEvent(event: AuditEvent): Promise<void> {
         action: event.action,
         resource: event.resource,
         resourceId: event.resourceId || null,
-        metadata: Object.keys(sanitized).length > 0 ? (sanitized as never) : undefined,
+        metadata:
+          sanitized && typeof sanitized === "object" && Object.keys(sanitized).length > 0
+            ? (sanitized as never)
+            : undefined,
         ipAddress: clientIp || null,
         userAgent: clientUa || null,
       },

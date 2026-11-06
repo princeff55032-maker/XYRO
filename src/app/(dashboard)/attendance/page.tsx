@@ -4,6 +4,15 @@ import { formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { CheckInDialog } from "./attendance-form";
 import { ExportAttendanceButton } from "./export-attendance-button";
+import type { Prisma } from "@prisma/client";
+
+type AttendanceRow = Prisma.AttendanceGetPayload<{
+  include: { member: { include: { user: { select: { name: true } } } } };
+}>;
+type MemberRow = Prisma.MemberGetPayload<{
+  include: { user: { select: { name: true } } };
+}>;
+type WeeklyAttendance = { date: Date; _count: number };
 
 export const metadata = { title: "Attendance" };
 
@@ -16,9 +25,9 @@ export default async function AttendancePage() {
   dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(dayStart.getTime() + 86400000);
 
-  let today: any[] = [];
-  let members: any[] = [];
-  let thisWeek: any[] = [];
+  let today: AttendanceRow[] = [];
+  let members: MemberRow[] = [];
+  let thisWeek: WeeklyAttendance[] = [];
 
   try {
     const results = await Promise.all([

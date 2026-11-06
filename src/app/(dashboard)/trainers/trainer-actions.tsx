@@ -11,7 +11,6 @@ import {
   X,
   UserPlus,
   Search,
-  Users,
   Check,
 } from "lucide-react";
 import {
@@ -27,7 +26,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import "@/components/ui/badge";
 import { getInitials } from "@/lib/utils";
 
 export interface GymMemberSummary {

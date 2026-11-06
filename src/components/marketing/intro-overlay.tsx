@@ -11,7 +11,7 @@ export function IntroOverlay() {
 
   useEffect(() => {
     if (sessionStorage.getItem("xyro-intro-seen")) {
-      setShow(false);
+      window.setTimeout(() => setShow(false), 0);
       return;
     }
 

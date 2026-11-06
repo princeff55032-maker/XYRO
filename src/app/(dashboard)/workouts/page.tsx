@@ -5,6 +5,24 @@ import { PlanUpgradeGate } from "@/components/dashboard/plan-upgrade-gate";
 import { formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { AddWorkoutDialog, AddDietDialog } from "./workout-form";
+import type { Prisma } from "@prisma/client";
+
+type WorkoutRow = Prisma.WorkoutPlanGetPayload<{
+  include: {
+    member: { include: { user: { select: { name: true } } } };
+    trainer: { include: { user: { select: { name: true } } } };
+    _count: { select: { exercises: true } };
+  };
+}>;
+type DietRow = Prisma.DietPlanGetPayload<{
+  include: {
+    member: { include: { user: { select: { name: true } } } };
+    _count: { select: { meals: true } };
+  };
+}>;
+type MemberRow = Prisma.MemberGetPayload<{
+  include: { user: { select: { name: true } } };
+}>;
 
 export const metadata = { title: "Workouts & Diets" };
 
@@ -43,9 +61,9 @@ export default async function WorkoutsPage() {
     );
   }
 
-  let workouts: any[] = [];
-  let diets: any[] = [];
-  let members: any[] = [];
+  let workouts: WorkoutRow[] = [];
+  let diets: DietRow[] = [];
+  let members: MemberRow[] = [];
 
   try {
     const results = await Promise.all([

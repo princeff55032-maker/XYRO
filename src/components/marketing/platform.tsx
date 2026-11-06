@@ -1,4 +1,4 @@
-import { ArrowRight, ShieldCheck, Database, Layers, CheckCircle2 } from "lucide-react";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 
 const steps = [
   {

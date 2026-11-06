@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Clock, ArrowRight, Sparkles } from "lucide-react";
+import { Clock } from "lucide-react";
 
 interface CustomTimeSlotPickerProps {
   value: string;

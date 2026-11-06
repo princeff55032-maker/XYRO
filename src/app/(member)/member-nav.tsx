@@ -1,16 +1,14 @@
 "use client";
 
 import { signOut } from "next-auth/react";
-import { LogOut, User, Shield } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { getInitials } from "@/lib/utils";
 
 export function MemberNav({
   userName,
-  userEmail,
   gymName,
 }: {
   userName: string;
-  userEmail?: string;
   gymName?: string;
 }) {
   return (

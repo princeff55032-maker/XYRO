@@ -227,7 +227,7 @@ async function runTestSuite() {
     );
 
     // Test 2.2: Generate Signup OTP
-    const signupOtpRes: any = await generateAndSendEmailOtp({
+    const signupOtpRes: { ok: boolean; devOtp?: string } = await generateAndSendEmailOtp({
       email: unverifiedUser.email,
       type: "SIGNUP",
       userName: unverifiedUser.name,

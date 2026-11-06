@@ -46,7 +46,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { gymId: deviceGymId, gymCode: deviceGymCode, deviceName } = authResult;
+    const { gymId: deviceGymId, deviceName } = authResult;
 
     // 3. Parse JSON Body
     const body = await req.json().catch(() => ({}));

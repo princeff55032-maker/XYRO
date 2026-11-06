@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, ShieldCheck, FileText, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, FileText } from "lucide-react";
 import { Logo } from "@/components/marketing/logo";
 import { Footer } from "@/components/marketing/footer";
 

@@ -151,7 +151,7 @@ export async function getGymSubscription(gymId: string): Promise<{
  * Asserts that the gym has an active subscription enabling the specified feature.
  */
 export async function assertPlanFeature(gymId: string, feature: FeatureKey): Promise<PlanConfig> {
-  const { plan, config } = await getGymSubscription(gymId);
+  const { config } = await getGymSubscription(gymId);
 
   if (!config.features[feature]) {
     const requiredTier =
