@@ -21,5 +21,15 @@ export function getDatabaseUrl(): string {
     return required("DATABASE_URL");
   }
 
-  return configuredUrl.replace(/^(['"])(.*)\1$/, "$2");
+  const cleanUrl = configuredUrl.replace(/^(['"])(.*)\1$/, "$2");
+  if (!cleanUrl.includes(".pooler.supabase.com")) {
+    return cleanUrl;
+  }
+
+  const url = new URL(cleanUrl);
+  if (url.port === "6543") {
+    url.port = "5432";
+  }
+  url.searchParams.delete("pgbouncer");
+  return url.toString();
 }
