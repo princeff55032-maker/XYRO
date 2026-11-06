@@ -156,10 +156,37 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           throw new Error(`Too many login attempts. Locked out for ${waitMins} minutes.`);
         }
 
-        // 2. Search user by email, memberId, or phone
+        // 2. Search user by email, memberId, or phone.
+        // Resolve member identifiers through the Member table first so the
+        // portal login does not depend on a nested relation filter matching
+        // provider-specific casing/formatting.
         let user = null;
 
-        if (inputIdentifier.includes("@")) {
+        if (portalRole === "MEMBER") {
+          const member = await prisma.member.findFirst({
+            where: {
+              OR: [
+                { memberId: { equals: memberIdentifier, mode: "insensitive" } },
+                { user: { email: { equals: normalizedIdentifier, mode: "insensitive" } } },
+                { user: { phone: { in: phoneCandidates } } },
+              ],
+              deletedAt: null,
+            },
+            select: { userId: true },
+          });
+
+          if (member) {
+            user = await prisma.user.findUnique({
+              where: { id: member.userId },
+              include: {
+                ownedGyms: { select: { id: true, gymCode: true }, take: 1 },
+                gymStaff: { select: { gymId: true, gym: { select: { gymCode: true } } }, take: 1 },
+                member: { select: { id: true, memberId: true, gymId: true, gym: { select: { gymCode: true } } } },
+                trainer: { select: { id: true, gymId: true, gym: { select: { gymCode: true } } } },
+              },
+            });
+          }
+        } else if (inputIdentifier.includes("@")) {
           user = await prisma.user.findFirst({
             where: { email: { equals: normalizedIdentifier, mode: "insensitive" } },
             include: {
