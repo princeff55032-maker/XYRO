@@ -125,7 +125,7 @@ export async function POST(req: Request) {
     }
 
     // 3. IDEMPOTENCY GUARD: If payment was already marked PAID, return 200 without duplicate execution
-    if (existingPayment.status === "PAID" && existingPayment.transactionId === transactionId) {
+    if (existingPayment.status === "PAID") {
       return NextResponse.json({ received: true, status: "ALREADY_PROCESSED" });
     }
 
@@ -136,10 +136,13 @@ export async function POST(req: Request) {
     }
 
     // 5. Execute Atomic State Transition
-    await prisma.$transaction(async (tx) => {
+    const transitioned = await prisma.$transaction(async (tx) => {
       // Mark Payment as PAID
-      await tx.payment.update({
-        where: { id: existingPayment.id },
+      const paymentUpdate = await tx.payment.updateMany({
+        where: {
+          id: existingPayment.id,
+          status: { not: "PAID" },
+        },
         data: {
           status: "PAID",
           transactionId: String(transactionId),
@@ -147,6 +150,10 @@ export async function POST(req: Request) {
           method: "ONLINE",
         },
       });
+
+      if (paymentUpdate.count !== 1) {
+        return false;
+      }
 
       // Activate or Extend Membership
       if (existingPayment.membershipId) {
@@ -170,7 +177,13 @@ export async function POST(req: Request) {
           });
         }
       }
+
+      return true;
     });
+
+    if (!transitioned) {
+      return NextResponse.json({ received: true, status: "ALREADY_PROCESSED" });
+    }
 
     // 6. Record Audit Log
     await logAuditEvent({

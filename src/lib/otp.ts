@@ -1,11 +1,12 @@
 import crypto from "crypto";
 import prisma from "@/lib/db";
 import { sendAppEmail } from "@/lib/email";
+import { getAuthSecret } from "@/lib/env";
 
 export type OtpType = "SIGNUP" | "LOGIN_2FA" | "PASSWORD_RESET";
 
 function getSigningSecret(): string {
-  return process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "xyro_otp_signing_secret_production_key_default";
+  return getAuthSecret();
 }
 
 /**

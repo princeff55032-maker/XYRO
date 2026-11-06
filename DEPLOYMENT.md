@@ -6,7 +6,7 @@ Steps to deploy this Next.js + Prisma app to production on **Vercel** with a hos
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 22+
 - GitHub account (for Vercel/Git integration)
 - Vercel account ([vercel.com](https://vercel.com))
 
@@ -73,7 +73,6 @@ Copy the output — this becomes your `AUTH_SECRET`.
 | `NEXTAUTH_URL` | Same as `AUTH_URL` |
 | `NEXT_PUBLIC_APP_NAME` | `XYRO` |
 | `NEXT_PUBLIC_APP_URL` | Same as `AUTH_URL` |
-| `NODE_ENV` | `production` |
 
 ### Optional (enable when ready):
 
@@ -88,7 +87,19 @@ Copy the output — this becomes your `AUTH_SECRET`.
 | `PAYMENT_PROVIDER_KEY` | From Razorpay Dashboard |
 | `PAYMENT_PROVIDER_SECRET` | From Razorpay Dashboard |
 
+`AUTH_SECRET` and `DATABASE_URL` are required at runtime. Do not deploy with
+development fallback values, and keep all secrets in the hosting provider's
+secret manager rather than committing them to the repository.
+
 4. Click **Deploy** — Vercel runs `npm run build` automatically
+
+Before switching production traffic, verify the deployment has:
+
+- A successful `npm run lint`, `npx tsc --noEmit`, and `npm run build`
+- Working login, password reset, email delivery, payment webhook, and QR access flows
+- Automated database backups and a tested restore procedure
+- A rollback target (the previous known-good deployment)
+- Monitoring for 5xx responses, failed webhooks, authentication failures, and database errors
 
 ---
 
