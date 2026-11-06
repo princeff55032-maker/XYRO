@@ -10,15 +10,16 @@ export async function POST(request: Request) {
       identifier?: string;
       password?: string;
     };
-    const identifier = body.identifier?.trim();
+    const rawIdentifier = body.identifier?.trim();
     const password = body.password;
 
-    if (!identifier || !password) {
+    if (!rawIdentifier || !password) {
       return NextResponse.json({ error: "Email, member ID, and password are required." }, { status: 400 });
     }
 
+    const identifier = rawIdentifier.toLowerCase();
     const rateLimit = await checkRateLimit(
-      `mobile-login:${await getClientIp()}:${identifier.toLowerCase()}`,
+      `mobile-login:${await getClientIp()}:${identifier}`,
       5,
       15 * 60
     );
@@ -33,8 +34,8 @@ export async function POST(request: Request) {
       where: {
         OR: [
           { email: identifier.toLowerCase() },
-          { phone: identifier },
-          { member: { memberId: { equals: identifier, mode: "insensitive" } } },
+          { phone: rawIdentifier },
+          { member: { memberId: { equals: rawIdentifier, mode: "insensitive" } } },
         ],
       },
       include: {

@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
+const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000").replace(/\/+$/, "");
 const TOKEN_KEY = "xyro-member-token";
 
 type MemberData = {
@@ -51,7 +51,7 @@ function Login({ onLogin }: { onLogin: (token: string) => void }) {
       const response = await fetch(`${API_URL}/api/mobile/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier, password }),
+        body: JSON.stringify({ identifier: identifier.trim(), password }),
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Unable to sign in.");
@@ -68,10 +68,11 @@ function Login({ onLogin }: { onLogin: (token: string) => void }) {
     <SafeAreaView style={styles.safe}>
       <View style={styles.login}>
         <Text style={styles.logo}>XYRO</Text>
+        <Text style={styles.kicker}>MEMBER PORTAL</Text>
         <Text style={styles.title}>Your training, in your pocket.</Text>
         <Text style={styles.muted}>Sign in with your member email, phone, or member ID.</Text>
-        <TextInput autoCapitalize="none" placeholder="Email or member ID" placeholderTextColor="#7d8798" value={identifier} onChangeText={setIdentifier} style={styles.input} />
-        <TextInput placeholder="Password" placeholderTextColor="#7d8798" secureTextEntry value={password} onChangeText={setPassword} style={styles.input} />
+        <TextInput autoCapitalize="none" autoCorrect={false} placeholder="Email, phone, or Member ID" placeholderTextColor="#8C7A6B" value={identifier} onChangeText={setIdentifier} style={styles.input} />
+        <TextInput placeholder="Password" placeholderTextColor="#8C7A6B" secureTextEntry value={password} onChangeText={setPassword} style={styles.input} />
         <Pressable onPress={submit} disabled={loading} style={styles.primary}>
           {loading ? <ActivityIndicator color="#08111f" /> : <Text style={styles.primaryText}>Sign in</Text>}
         </Pressable>
@@ -149,35 +150,36 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#08111f" },
+  safe: { flex: 1, backgroundColor: "#F9F8F6" },
   content: { padding: 20, paddingBottom: 100 },
   login: { flex: 1, justifyContent: "center", padding: 24 },
-  logo: { color: "#b6ff45", fontSize: 40, fontWeight: "900", letterSpacing: 4, marginBottom: 28 },
+  logo: { color: "#8B5E34", fontSize: 40, fontWeight: "900", letterSpacing: 4, marginBottom: 10 },
+  kicker: { color: "#A07850", fontSize: 11, fontWeight: "800", letterSpacing: 2, marginBottom: 18 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 24 },
-  title: { color: "#f7f9fc", fontSize: 30, fontWeight: "800", marginBottom: 8 },
-  eyebrow: { color: "#b6ff45", fontSize: 12, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase" },
-  muted: { color: "#9ba8ba", fontSize: 14, lineHeight: 21 },
-  input: { backgroundColor: "#111e30", borderColor: "#24344a", borderWidth: 1, borderRadius: 14, color: "#fff", padding: 16, marginTop: 14, fontSize: 16 },
-  primary: { backgroundColor: "#b6ff45", borderRadius: 14, padding: 17, alignItems: "center", marginTop: 18 },
-  primaryText: { color: "#08111f", fontWeight: "800", fontSize: 16 },
-  avatar: { width: 44, height: 44, borderRadius: 22, textAlign: "center", textAlignVertical: "center", backgroundColor: "#b6ff45", color: "#08111f", fontWeight: "900", fontSize: 20 },
-  qrCard: { backgroundColor: "#b6ff45", borderRadius: 22, padding: 18, flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
-  cardLabel: { color: "#78962e", fontSize: 11, fontWeight: "900", letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 },
-  qrState: { color: "#08111f", fontSize: 21, fontWeight: "900", marginBottom: 6 },
+  title: { color: "#33281E", fontSize: 30, fontWeight: "800", marginBottom: 8 },
+  eyebrow: { color: "#8B5E34", fontSize: 12, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase" },
+  muted: { color: "#8C7A6B", fontSize: 14, lineHeight: 21 },
+  input: { backgroundColor: "#FFFFFF", borderColor: "#E5D9C5", borderWidth: 1, borderRadius: 10, color: "#33281E", padding: 16, marginTop: 14, fontSize: 16 },
+  primary: { backgroundColor: "#8B5E34", borderRadius: 10, padding: 17, alignItems: "center", marginTop: 18, shadowColor: "#33281E", shadowOpacity: 0.12, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
+  primaryText: { color: "#FFFFFF", fontWeight: "800", fontSize: 16 },
+  avatar: { width: 44, height: 44, borderRadius: 22, textAlign: "center", textAlignVertical: "center", backgroundColor: "#E5D9C5", color: "#8B5E34", fontWeight: "900", fontSize: 20 },
+  qrCard: { backgroundColor: "#FFFFFF", borderColor: "#E5D9C5", borderWidth: 1, borderRadius: 16, padding: 18, flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14, shadowColor: "#33281E", shadowOpacity: 0.08, shadowRadius: 14, shadowOffset: { width: 0, height: 5 }, elevation: 2 },
+  cardLabel: { color: "#A07850", fontSize: 11, fontWeight: "900", letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 },
+  qrState: { color: "#33281E", fontSize: 21, fontWeight: "900", marginBottom: 6 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 18 },
-  stat: { backgroundColor: "#111e30", borderRadius: 16, padding: 16, width: "48%", minHeight: 92 },
-  statValue: { color: "#f7f9fc", fontSize: 17, fontWeight: "800" },
+  stat: { backgroundColor: "#FFFFFF", borderColor: "#E5D9C5", borderWidth: 1, borderRadius: 12, padding: 16, width: "48%", minHeight: 92 },
+  statValue: { color: "#33281E", fontSize: 17, fontWeight: "800" },
   section: { marginTop: 16 },
-  sectionTitle: { color: "#f7f9fc", fontSize: 19, fontWeight: "800", marginBottom: 12 },
-  cardTitle: { color: "#f7f9fc", fontSize: 16, fontWeight: "800", marginBottom: 8 },
-  body: { color: "#d8dfeb", fontSize: 15, lineHeight: 24, marginBottom: 6 },
-  listCard: { backgroundColor: "#111e30", borderRadius: 16, padding: 16, marginBottom: 10 },
-  row: { flexDirection: "row", justifyContent: "space-between", borderBottomColor: "#1d2c40", borderBottomWidth: 1, paddingVertical: 12 },
-  secondary: { borderColor: "#b6ff45", borderWidth: 1, borderRadius: 12, padding: 13, alignItems: "center", marginVertical: 16 },
-  secondaryText: { color: "#b6ff45", fontWeight: "800" },
-  danger: { borderColor: "#ff7d7d", borderWidth: 1, borderRadius: 12, padding: 14, alignItems: "center", marginTop: 24 },
-  dangerText: { color: "#ff7d7d", fontWeight: "800" },
-  nav: { position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "#0d1929", flexDirection: "row", justifyContent: "space-around", paddingVertical: 18, borderTopColor: "#1d2c40", borderTopWidth: 1 },
-  navText: { color: "#8d9aad", fontWeight: "700" },
-  navActive: { color: "#b6ff45", fontWeight: "900" },
+  sectionTitle: { color: "#33281E", fontSize: 19, fontWeight: "800", marginBottom: 12 },
+  cardTitle: { color: "#33281E", fontSize: 16, fontWeight: "800", marginBottom: 8 },
+  body: { color: "#59493B", fontSize: 15, lineHeight: 24, marginBottom: 6 },
+  listCard: { backgroundColor: "#FFFFFF", borderColor: "#E5D9C5", borderWidth: 1, borderRadius: 12, padding: 16, marginBottom: 10 },
+  row: { flexDirection: "row", justifyContent: "space-between", borderBottomColor: "#E5D9C5", borderBottomWidth: 1, paddingVertical: 12 },
+  secondary: { borderColor: "#8B5E34", borderWidth: 1, borderRadius: 10, padding: 13, alignItems: "center", marginVertical: 16 },
+  secondaryText: { color: "#8B5E34", fontWeight: "800" },
+  danger: { borderColor: "#B45309", borderWidth: 1, borderRadius: 10, padding: 14, alignItems: "center", marginTop: 24 },
+  dangerText: { color: "#B45309", fontWeight: "800" },
+  nav: { position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "#FFFFFF", flexDirection: "row", justifyContent: "space-around", paddingVertical: 18, borderTopColor: "#E5D9C5", borderTopWidth: 1 },
+  navText: { color: "#8C7A6B", fontWeight: "700" },
+  navActive: { color: "#8B5E34", fontWeight: "900" },
 });
