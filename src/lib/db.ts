@@ -18,6 +18,7 @@ function createPrismaClient() {
       max: process.env.NODE_ENV === "production" ? 4 : 10,
       idleTimeoutMillis: 10000,
       connectionTimeoutMillis: 10000,
+      keepAlive: true,
     });
 
   if (process.env.NODE_ENV !== "production") globalForPrisma.pool = pool;

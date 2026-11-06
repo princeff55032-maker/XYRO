@@ -16,5 +16,10 @@ export function getAuthSecret(): string {
 }
 
 export function getDatabaseUrl(): string {
-  return required("DATABASE_URL");
+  const configuredUrl = process.env.DIRECT_URL?.trim() || process.env.DATABASE_URL?.trim();
+  if (!configuredUrl) {
+    return required("DATABASE_URL");
+  }
+
+  return configuredUrl.replace(/^(['"])(.*)\1$/, "$2");
 }
