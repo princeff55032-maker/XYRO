@@ -35,10 +35,15 @@ async function request(path: string, token: string, options?: RequestInit) {
     ...options,
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...(options?.headers ?? {}) },
   });
-  const contentType = response.headers.get("content-type") ?? "";
-  const body = contentType.includes("application/json")
-    ? await response.json()
-    : { error: `The server returned HTTP ${response.status}. Please redeploy the XYRO API.` };
+  const rawBody = await response.text();
+  let body: { error?: string } = {};
+  if (rawBody.trim()) {
+    try {
+      body = JSON.parse(rawBody) as { error?: string };
+    } catch {
+      body = { error: `The server returned an invalid response (HTTP ${response.status}).` };
+    }
+  }
   if (!response.ok) throw new Error(body.error ?? "Request failed.");
   return body;
 }
@@ -56,11 +61,17 @@ function Login({ onLogin }: { onLogin: (token: string) => void }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifier: identifier.trim(), password }),
       });
-      const contentType = response.headers.get("content-type") ?? "";
-      const body = contentType.includes("application/json")
-        ? await response.json()
-        : { error: `The server returned HTTP ${response.status}. Please redeploy the XYRO API.` };
+      const rawBody = await response.text();
+      let body: { accessToken?: string; error?: string } = {};
+      if (rawBody.trim()) {
+        try {
+          body = JSON.parse(rawBody) as { accessToken?: string; error?: string };
+        } catch {
+          body = { error: `The server returned an invalid response (HTTP ${response.status}).` };
+        }
+      }
       if (!response.ok) throw new Error(body.error ?? "Unable to sign in.");
+      if (!body.accessToken) throw new Error("The server did not return a sign-in token.");
       await SecureStore.setItemAsync(TOKEN_KEY, body.accessToken);
       onLogin(body.accessToken);
     } catch (error) {
@@ -99,7 +110,12 @@ function Dashboard({ token, onLogout }: { token: string; onLogout: () => void })
     try {
       setData(await request("/api/mobile/member", token));
     } catch (error) {
-      if (error instanceof Error && error.message === "Unauthorized.") onLogout();
+      if (
+        error instanceof Error &&
+        (error.message === "Unauthorized." || error.message.startsWith("The server returned"))
+      ) {
+        onLogout();
+      }
       else Alert.alert("Could not load your account", error instanceof Error ? error.message : "Please try again.");
     } finally {
       setLoading(false);
