@@ -8,7 +8,15 @@
     "userInterfaceStyle": "dark",
     "scheme": "xyro-member",
     "extra": {
-      "apiUrl": "https://your-xyro-domain.example.com"
+      "apiUrl": "https://your-xyro-domain.example.com",
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "1051a1c2-02b8-4aea-b1eb-c7fb28ea06f9"
+      }
     },
     "ios": {
       "supportsTablet": true
@@ -23,10 +31,10 @@
       },
       "predictiveBackGestureEnabled": false
     },
-    "platforms": ["android"],
-    "plugins": [
-      "expo-router",
-      "expo-secure-store"
-    ]
+    "platforms": [
+      "android"
+    ],
+    "plugins": ["expo-secure-store"],
+    "owner": "princegupta0"
   }
 }
