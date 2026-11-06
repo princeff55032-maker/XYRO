@@ -18,6 +18,11 @@ export async function POST(request: Request) {
     }
 
     const identifier = rawIdentifier.toLowerCase();
+    const memberIdentifier = rawIdentifier.replace(/\s+/g, "");
+    const phoneDigits = rawIdentifier.replace(/\D/g, "");
+    const phoneCandidates = Array.from(
+      new Set([rawIdentifier, phoneDigits, phoneDigits ? `+${phoneDigits}` : ""])
+    ).filter(Boolean);
     const rateLimit = await checkRateLimit(
       `mobile-login:${await getClientIp()}:${identifier}`,
       5,
@@ -34,8 +39,8 @@ export async function POST(request: Request) {
       where: {
         OR: [
           { email: identifier.toLowerCase() },
-          { phone: rawIdentifier },
-          { member: { memberId: { equals: rawIdentifier, mode: "insensitive" } } },
+          { phone: { in: phoneCandidates } },
+          { member: { memberId: { equals: memberIdentifier, mode: "insensitive" } } },
         ],
       },
       include: {

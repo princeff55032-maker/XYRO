@@ -139,9 +139,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         const inputIdentifier = (credentials.email as string).trim();
+        const memberIdentifier = inputIdentifier.replace(/\s+/g, "");
+        const normalizedIdentifier = inputIdentifier.toLowerCase();
+        const phoneDigits = inputIdentifier.replace(/\D/g, "");
+        const phoneCandidates = Array.from(
+          new Set([inputIdentifier, phoneDigits, phoneDigits ? `+${phoneDigits}` : ""])
+        ).filter(Boolean);
         const portalRole = (credentials.portalRole as string | undefined)?.toUpperCase();
         const ip = await getClientIp();
-        const rateLimitKey = `login:${ip}:${inputIdentifier.toLowerCase()}`;
+        const rateLimitKey = `login:${ip}:${normalizedIdentifier}`;
 
         // 1. Check IP+Identifier Sliding-Window Rate Limit (5 attempts / 15 minutes)
         const rl = await checkRateLimit(rateLimitKey, 5, 15 * 60);
@@ -154,8 +160,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         let user = null;
 
         if (inputIdentifier.includes("@")) {
-          user = await prisma.user.findUnique({
-            where: { email: inputIdentifier.toLowerCase() },
+          user = await prisma.user.findFirst({
+            where: { email: { equals: normalizedIdentifier, mode: "insensitive" } },
             include: {
               ownedGyms: { select: { id: true, gymCode: true }, take: 1 },
               gymStaff: { select: { gymId: true, gym: { select: { gymCode: true } } }, take: 1 },
@@ -168,9 +174,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           user = await prisma.user.findFirst({
             where: {
               OR: [
-                { member: { memberId: { equals: inputIdentifier, mode: "insensitive" } } },
-                { phone: inputIdentifier },
-                { email: inputIdentifier.toLowerCase() },
+                { member: { memberId: { equals: memberIdentifier, mode: "insensitive" } } },
+                { phone: { in: phoneCandidates } },
+                { email: { equals: normalizedIdentifier, mode: "insensitive" } },
               ],
             },
             include: {
