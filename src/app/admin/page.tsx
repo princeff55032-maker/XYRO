@@ -140,6 +140,13 @@ export default async function SuperAdminPage() {
   const weekStart = new Date(todayStart);
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
 
+  const planMonthlyPrice: Record<string, number> = {
+    FREE: 0,
+    STARTER: 1499,
+    PRO: 3499,
+    BUSINESS: 7999,
+  };
+
   // ── SaaS subscription revenue ────────────────────────────────
   const activeSubscriptionStats = gyms.reduce(
     (stats, gym) => {
@@ -152,13 +159,6 @@ export default async function SuperAdminPage() {
     },
     { revenue: 0, count: 0 }
   );
-
-  const planMonthlyPrice: Record<string, number> = {
-    FREE: 0,
-    STARTER: 1499,
-    PRO: 3499,
-    BUSINESS: 7999,
-  };
 
   const planDistribution: Record<string, number> = {
     FREE: 0,
